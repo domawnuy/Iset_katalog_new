@@ -62,13 +62,19 @@ ORDER BY
 -- Функция для получения полного списка условий эксплуатации
 CREATE OR REPLACE FUNCTION get_operating_conditions() 
 RETURNS TABLE (
-    factor_type TEXT,
-    factor_name TEXT,
-    parameter_name TEXT,
-    parameter_value TEXT
+    factor_type VARCHAR(20),
+    factor_name VARCHAR(100),
+    parameter_name VARCHAR(100),
+    parameter_value VARCHAR(100)
 ) AS $$
 BEGIN
     RETURN QUERY
-    SELECT * FROM v_operating_conditions;
+    SELECT 
+        oc.factor_type::VARCHAR(20),
+        oc.factor_name::VARCHAR(100),
+        oc.parameter_name::VARCHAR(100),
+        oc.parameter_value::VARCHAR(100)
+    FROM 
+        v_operating_conditions oc;
 END;
 $$ LANGUAGE plpgsql; 
