@@ -6,6 +6,11 @@
 
 ```
 .
+├── api/                           # API для каталога соединителей
+│   ├── models/                    # Pydantic модели для API
+│   ├── routers/                   # Маршрутизаторы FastAPI
+│   ├── services/                  # Сервисы для бизнес-логики
+│   └── main.py                    # Основной файл API
 ├── database/                      # Основная директория проекта
 │   ├── connection/                # Модули для подключения к базе данных
 │   │   ├── db_config.py           # Конфигурация подключения
@@ -16,6 +21,7 @@
 │   │   ├── 001_initial_schema.sql # Начальная схема БД
 │   │   ├── 002_initial_data.sql   # Начальные данные
 │   │   ├── 003_views_functions.sql # Представления и функции
+│   │   ├── 004_product_groups.sql # Таблицы для каталога
 │   │   └── migration_runner.py    # Утилита для управления миграциями
 │   ├── queries/                   # Часто используемые запросы
 │   │   ├── connector_info.sql     # Получение информации о соединителе
@@ -47,9 +53,10 @@
 │   │   └── СНЦ23/                 # Данные по серии СНЦ23
 │   ├── cli.py                     # Интерфейс командной строки
 │   └── init_db_unified.sql        # Объединенный скрипт инициализации
-├── .env                           # Параметры подключения к PostgreSQL
+├── .env                           # Параметры подключения к PostgreSQL и API
 ├── .pgpass                        # Файл паролей PostgreSQL
 ├── .gitignore                     # Игнорируемые Git файлы
+├── run_api.py                     # Скрипт запуска API
 └── create_unified_script.ps1      # Скрипт создания объединенного файла
 ```
 
@@ -59,12 +66,12 @@
 
 - Python 3.8+
 - PostgreSQL 12+
-- Библиотеки Python: `psycopg2-binary`, `python-dotenv`
+- Библиотеки Python (см. requirements.txt)
 
 ### Установка зависимостей
 
 ```bash
-pip install psycopg2-binary python-dotenv
+pip install -r requirements.txt
 ```
 
 ### Настройка конфигурации
@@ -72,12 +79,18 @@ pip install psycopg2-binary python-dotenv
 1. Создайте файл `.env` в корне проекта:
 
 ```
+# PostgreSQL
 DB_HOST=localhost
 DB_PORT=5432
 DB_NAME=connector_catalog
 DB_USER=postgres
 DB_PASSWORD=your_password
 DB_SCHEMA=connector_schema
+
+# API
+API_PORT=8000
+API_HOST=localhost
+API_DEBUG=True
 ```
 
 ## Инициализация базы данных
@@ -106,7 +119,7 @@ python -m database.migrations.migration_runner status
 python -m database.migrations.migration_runner apply
 
 # Применить миграции до указанной
-python -m database.migrations.migration_runner apply --target 003_views_functions.sql
+python -m database.migrations.migration_runner apply --target 004_product_groups.sql
 ```
 
 ### Вручную через psql
@@ -114,6 +127,23 @@ python -m database.migrations.migration_runner apply --target 003_views_function
 ```bash
 psql -U postgres -h localhost -d connector_catalog -f database/init_db_unified.sql
 ```
+
+## Запуск API
+
+После инициализации базы данных вы можете запустить API:
+
+```bash
+python run_api.py
+```
+
+API будет доступно по адресу http://localhost:8000
+Документация API (Swagger UI) будет доступна по адресу http://localhost:8000/docs
+
+### Основные эндпоинты API
+
+- `GET /api/Groups/GetGroups` - получение списка групп изделий
+- `GET /api/Products/GetProductsByGroupId?group_id={id}&page={page}&page_size={size}` - получение списка изделий по ID группы
+- `GET /api/Products/GetById/{id}` - получение детальной информации об изделии
 
 ## Основные возможности
 
@@ -123,10 +153,11 @@ psql -U postgres -h localhost -d connector_catalog -f database/init_db_unified.s
 - Анализ совместимости соединителей
 - Поиск и фильтрация по различным параметрам
 - Конструктор для формирования и разбора кодов соединителей
+- REST API для интеграции с фронтенд-приложениями
 
 ## Примеры использования
 
-### Программное использование
+### Программное использование Python API
 
 ```python
 from database import execute_query, execute_query_single_result
@@ -137,23 +168,30 @@ result = execute_query(
     "SELECT * FROM connector_schema.v_connectors_full WHERE full_code = %s", 
     (connector_code,)
 )
+```
 
-# Поиск соединителей по параметрам
-connectors = execute_query("""
-    SELECT full_code, size_value, body_type, contact_quantity, connector_part
-    FROM connector_schema.v_connectors_search
-    WHERE type_name = %s AND contact_coating = %s
-    ORDER BY size_value, contact_quantity
-""", ('2РМТ', 'золото'))
+### Использование REST API
 
-# Получение технических характеристик
-specs = execute_query("SELECT * FROM connector_schema.v_contact_specs")
+```python
+import requests
 
-# Использование функций для анализа
-lifetime = execute_query(
-    "SELECT * FROM connector_schema.calculate_lifetime_at_temperature(%s)",
-    (100,)
+# Получение списка групп
+groups_response = requests.get("http://localhost:8000/api/Groups/GetGroups")
+groups = groups_response.json()
+
+# Получение списка изделий в группе
+group_id = 1
+products_response = requests.get(
+    f"http://localhost:8000/api/Products/GetProductsByGroupId?group_id={group_id}"
 )
+products = products_response.json()
+
+# Получение детальной информации об изделии
+product_id = 1
+product_response = requests.get(
+    f"http://localhost:8000/api/Products/GetById/{product_id}"
+)
+product_details = product_response.json()
 ```
 
 ### Исполнение запросов из файлов
@@ -161,9 +199,6 @@ lifetime = execute_query(
 ```bash
 # Выполнение запроса из файла
 python -m database.cli execute database/queries/connector_info.sql
-
-# Или через psql
-psql -U postgres -h localhost -d connector_catalog -f database/queries/search_by_specs.sql
 ```
 
 ## Технические характеристики
