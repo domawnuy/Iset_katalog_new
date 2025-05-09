@@ -1,11 +1,7 @@
 # Основные зависимости
-fastapi>=0.95.0
-uvicorn>=0.22.0
-pydantic>=2.0.0
 python-dotenv>=1.0.0
 psycopg2-binary>=2.9.5
 
 # Дополнительные зависимости для разработки
 pytest>=7.3.1
-httpx>=0.24.0
 pylint>=2.17.0 
