@@ -8,7 +8,7 @@ from api.models.group import Group
 from api.database import get_db_cursor
 
 router = APIRouter(
-    prefix="/api/Groups",
+    prefix="/Groups",
     tags=["groups"],
     responses={404: {"description": "Группа не найдена"}},
 )

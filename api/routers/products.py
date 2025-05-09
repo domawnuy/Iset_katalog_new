@@ -8,7 +8,7 @@ from api.models.product import ProductPreview, ProductPage, ProductDetail
 from api.database import get_db_cursor
 
 router = APIRouter(
-    prefix="/api/Products",
+    prefix="/Products",
     tags=["products"],
     responses={404: {"description": "Продукт не найден"}},
 )
@@ -22,6 +22,11 @@ async def get_products_by_group_id(
 ):
     """
     Получение списка изделий по идентификатору группы с пагинацией
+    
+    Parameters:
+    - **group_id**: Идентификатор группы изделий
+    - **page**: Номер страницы (начиная с 1)
+    - **page_size**: Количество элементов на странице (от 1 до 100)
     """
     try:
         with get_db_cursor() as cursor:
@@ -75,6 +80,9 @@ async def get_products_by_group_id(
 async def get_product_by_id(product_id: int):
     """
     Получение детальной информации о продукте по его идентификатору
+    
+    Parameters:
+    - **product_id**: Идентификатор продукта
     """
     try:
         with get_db_cursor() as cursor:
