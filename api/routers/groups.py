@@ -1,10 +1,11 @@
 """
 Router for product groups
 """
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, HTTPException
 from typing import List
 
 from api.models.group import Group
+from api.database import get_db_cursor
 
 router = APIRouter(
     prefix="/api/Groups",
@@ -18,8 +19,16 @@ async def get_groups():
     """
     Получение списка групп изделий
     """
-    # Заглушка для функциональности
-    return [
-        {"group_id": 1, "group_name": "2РМТ"},
-        {"group_id": 2, "group_name": "2РМДТ"},
-    ] 
+    try:
+        with get_db_cursor() as cursor:
+            cursor.execute(
+                """
+                SELECT type_id AS group_id, type_name AS group_name 
+                FROM connector_types 
+                ORDER BY type_name
+                """
+            )
+            groups = cursor.fetchall()
+            return groups
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Ошибка базы данных: {str(e)}") 
