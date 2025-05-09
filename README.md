@@ -1,229 +1,195 @@
-# База данных соединителей 2РМТ, 2РМДТ
+# Каталог соединителей Iset
 
-Система для хранения и управления данными о соединителях серий 2РМТ и 2РМДТ, их технических характеристиках, взаимосвязях и функциональных возможностях.
+Проект представляет собой каталог соединителей типа 2РМТ, 2РМДТ и других электрических соединителей с реализацией API для получения данных.
+
+## Описание проекта
+
+Система предоставляет API для получения информации о соединителях из базы данных PostgreSQL. Проект состоит из трех слоев:
+1. БД - PostgreSQL база данных с таблицами, хранящими информацию о соединителях
+2. API - FastAPI приложение, предоставляющее REST API для доступа к данным
+3. Frontend (планируется в будущем) - React Native приложение для отображения каталога
 
 ## Структура проекта
 
 ```
-.
-├── api/                           # API для каталога соединителей
-│   ├── models/                    # Pydantic модели для API
-│   ├── routers/                   # Маршрутизаторы FastAPI
-│   ├── services/                  # Сервисы для бизнес-логики
-│   └── main.py                    # Основной файл API
-├── database/                      # Основная директория проекта
-│   ├── connection/                # Модули для подключения к базе данных
-│   │   ├── db_config.py           # Конфигурация подключения
-│   │   ├── db_connector.py        # Базовый коннектор
-│   │   ├── connection_pool.py     # Пул соединений для эффективной работы
-│   │   └── db_utils.py            # Утилиты для работы с БД
-│   ├── migrations/                # Управление миграциями базы данных
-│   │   ├── 001_initial_schema.sql # Начальная схема БД
-│   │   ├── 002_initial_data.sql   # Начальные данные
-│   │   ├── 003_views_functions.sql # Представления и функции
-│   │   ├── 004_product_groups.sql # Таблицы для каталога
-│   │   └── migration_runner.py    # Утилита для управления миграциями
-│   ├── queries/                   # Часто используемые запросы
-│   │   ├── connector_info.sql     # Получение информации о соединителе
-│   │   ├── search_by_specs.sql    # Поиск соединителей по характеристикам
-│   │   ├── tech_specs.sql         # Технические характеристики
-│   │   └── lifetime_calc.sql      # Расчет срока службы
-│   ├── schema/                    # Схемы таблиц базы данных
-│   │   ├── 01_base_tables.sql     # Основные таблицы
-│   │   ├── 02_dictionary_tables.sql # Справочные таблицы
-│   │   ├── 03_technical_tables.sql # Таблицы технических характеристик
-│   │   └── 04_relation_tables.sql # Таблицы связей
-│   ├── data/                      # Данные для заполнения таблиц
-│   │   ├── 01_base_dictionary_data.sql # Данные базовых справочников
-│   │   ├── 02_technical_data.sql  # Технические характеристики
-│   │   ├── 03_relation_data.sql   # Данные связей
-│   │   └── 04_connectors_data.sql # Данные соединителей
-│   ├── views/                     # Представления
-│   │   └── 01_connector_views.sql # Представления для соединителей
-│   ├── functions/                 # Функции и триггеры
-│   │   └── 01_connector_functions.sql # Функции для работы с соединителями
-│   ├── indexes/                   # Индексы
-│   │   └── 01_connector_indexes.sql # Индексы базы данных
-│   ├── tests/                     # Тесты целостности
-│   │   └── 01_integrity_tests.sql # Тесты целостности БД
-│   ├── examples/                  # Примеры запросов
-│   │   └── 01_example_queries.sql # Примеры запросов к БД
-│   ├── Zapchasti/                 # Исходные данные и материалы
-│   │   ├── 2РМТ, 2РМДТ/           # Данные по сериям 2РМТ и 2РМДТ
-│   │   └── СНЦ23/                 # Данные по серии СНЦ23
-│   ├── cli.py                     # Интерфейс командной строки
-│   └── init_db_unified.sql        # Объединенный скрипт инициализации
-├── .env                           # Параметры подключения к PostgreSQL и API
-├── .pgpass                        # Файл паролей PostgreSQL
-├── .gitignore                     # Игнорируемые Git файлы
-├── run_api.py                     # Скрипт запуска API
-└── create_unified_script.ps1      # Скрипт создания объединенного файла
+Iset_katalog4/
+├── api/                    # Модуль API
+│   ├── models/             # Модели данных (Pydantic)
+│   ├── routers/            # Маршруты API
+│   ├── database.py         # Работа с базой данных
+│   └── main.py             # Основное FastAPI приложение
+├── database/               # Модуль работы с базой данных
+│   ├── connection/         # Подключение к БД
+│   ├── data/               # Данные для заполнения БД
+│   ├── schema/             # Схемы таблиц
+│   ├── queries/            # SQL запросы
+│   ├── migrations/         # Миграции БД
+│   └── functions/          # Функции для работы с БД
+├── .env                    # Переменные окружения
+├── run_api_server.py       # Скрипт запуска API сервера
+└── requirements.txt        # Зависимости проекта
 ```
-
-## Установка и настройка
-
-### Предварительные требования
-
-- Python 3.8+
-- PostgreSQL 12+
-- Библиотеки Python (см. requirements.txt)
-
-### Установка зависимостей
-
-```bash
-pip install -r requirements.txt
-```
-
-### Настройка конфигурации
-
-1. Создайте файл `.env` в корне проекта:
-
-```
-# PostgreSQL
-DB_HOST=localhost
-DB_PORT=5432
-DB_NAME=connector_catalog
-DB_USER=postgres
-DB_PASSWORD=your_password
-DB_SCHEMA=connector_schema
-
-# API
-API_PORT=8000
-API_HOST=localhost
-API_DEBUG=True
-```
-
-## Инициализация базы данных
-
-### Через интерфейс командной строки Python
-
-#### Вариант 1: Объединенный скрипт (рекомендуется)
-
-```bash
-python -m database.cli init-db
-```
-
-#### Вариант 2: Последовательное выполнение скриптов
-
-```bash
-python -m database.cli init-db --sequential
-```
-
-### Через управление миграциями (для разработки)
-
-```bash
-# Показать статус миграций
-python -m database.migrations.migration_runner status
-
-# Применить все миграции
-python -m database.migrations.migration_runner apply
-
-# Применить миграции до указанной
-python -m database.migrations.migration_runner apply --target 004_product_groups.sql
-```
-
-### Вручную через psql
-
-```bash
-psql -U postgres -h localhost -d connector_catalog -f database/init_db_unified.sql
-```
-
-## Запуск API
-
-После инициализации базы данных вы можете запустить API:
-
-```bash
-python run_api.py
-```
-
-API будет доступно по адресу http://localhost:8000
-Документация API (Swagger UI) будет доступна по адресу http://localhost:8000/docs
-
-### Основные эндпоинты API
-
-- `GET /api/Groups/GetGroups` - получение списка групп изделий
-- `GET /api/Products/GetProductsByGroupId?group_id={id}&page={page}&page_size={size}` - получение списка изделий по ID группы
-- `GET /api/Products/GetById/{id}` - получение детальной информации об изделии
-
-## Основные возможности
-
-- Полная информация о соединителях 2РМТ и 2РМДТ
-- Технические характеристики (сопротивление, токи, температуры)
-- Расчеты сроков службы в зависимости от условий эксплуатации
-- Анализ совместимости соединителей
-- Поиск и фильтрация по различным параметрам
-- Конструктор для формирования и разбора кодов соединителей
-- REST API для интеграции с фронтенд-приложениями
-
-## Примеры использования
-
-### Программное использование Python API
-
-```python
-from database import execute_query, execute_query_single_result
-
-# Получение информации о соединителе
-connector_code = '2РМТ18Б4Г1В1В'
-result = execute_query(
-    "SELECT * FROM connector_schema.v_connectors_full WHERE full_code = %s", 
-    (connector_code,)
-)
-```
-
-### Использование REST API
-
-```python
-import requests
-
-# Получение списка групп
-groups_response = requests.get("http://localhost:8000/api/Groups/GetGroups")
-groups = groups_response.json()
-
-# Получение списка изделий в группе
-group_id = 1
-products_response = requests.get(
-    f"http://localhost:8000/api/Products/GetProductsByGroupId?group_id={group_id}"
-)
-products = products_response.json()
-
-# Получение детальной информации об изделии
-product_id = 1
-product_response = requests.get(
-    f"http://localhost:8000/api/Products/GetById/{product_id}"
-)
-product_details = product_response.json()
-```
-
-### Исполнение запросов из файлов
-
-```bash
-# Выполнение запроса из файла
-python -m database.cli execute database/queries/connector_info.sql
-```
-
-## Технические характеристики
-
-База данных содержит:
-
-- Сопротивление контактов в зависимости от диаметра
-- Максимальный ток в зависимости от диаметра контактов
-- Минимальная наработка в зависимости от температуры
-- Температура перегрева контактов в зависимости от токовой нагрузки
-- Общие технические характеристики (изоляция, напряжение и т.д.)
 
 ## Требования
 
-- PostgreSQL 12+
-- Python 3.8+
-- Кодировка UTF-8
-- Доступ к базе данных с правами на создание схем и таблиц
+- Python 3.9+
+- PostgreSQL 13+
+- Зависимости из requirements.txt
 
-## Безопасность
+## Установка и настройка
 
-- Используются параметризованные запросы для предотвращения SQL-инъекций
-- Пароли и конфиденциальные данные хранятся в файле `.env`
-- Используется пул соединений для эффективного управления ресурсами БД
+1. Клонируйте репозиторий:
+```bash
+git clone https://github.com/domawnuy/Iset_katalog_new.git
+cd Iset_katalog_new
+```
 
-## Разработка и поддержка
+2. Создайте виртуальное окружение и установите зависимости:
+```bash
+python -m venv .venv
+source .venv/bin/activate  # На Windows: .venv\Scripts\activate
+pip install -r requirements.txt
+```
 
-Система находится в активной разработке. Предложения по улучшению принимаются через issues. 
+3. Настройте подключение к базе данных PostgreSQL:
+   - Создайте файл `.env` в корневой директории проекта
+   - Укажите параметры подключения к БД:
+```
+DB_NAME=iset_katalog
+DB_USER=postgres
+DB_PASSWORD=ваш_пароль
+DB_HOST=localhost
+DB_PORT=5432
+```
+
+4. Инициализируйте базу данных с помощью миграций:
+```bash
+python -m database.migrations.migration_runner
+```
+
+## Запуск API сервера
+
+Для запуска API сервера выполните:
+```bash
+python run_api_server.py
+```
+
+Сервер будет доступен по адресу: http://localhost:8000
+
+Документация API (Swagger): http://localhost:8000/docs
+
+## API эндпоинты
+
+### 1. Получение списка групп изделий
+
+```
+GET /api/Groups/GetGroups
+```
+
+**Ответ:**
+```json
+[
+  {
+    "group_id": 1,
+    "group_name": "2РМТ"
+  },
+  {
+    "group_id": 2,
+    "group_name": "2РМДТ"
+  }
+]
+```
+
+### 2. Получение списка изделий в группе с пагинацией
+
+```
+GET /api/Products/GetProductsByGroupId?group_id=1&page=1&page_size=10
+```
+
+**Параметры:**
+- `group_id` - идентификатор группы изделий
+- `page` - номер страницы (начиная с 1)
+- `page_size` - количество элементов на странице (от 1 до 100)
+
+**Ответ:**
+```json
+{
+  "items": [
+    {
+      "product_id": 1,
+      "product_name": "2РМТ14Б4Ш1В1В",
+      "product_image_path": "/images/2rmt14b4sh1v1v.jpg"
+    }
+  ],
+  "total_count": 150,
+  "page": 1,
+  "page_size": 10
+}
+```
+
+### 3. Получение детальной информации об изделии
+
+```
+GET /api/Products/GetById?product_id=1
+```
+
+**Параметры:**
+- `product_id` - идентификатор изделия
+
+**Ответ:**
+```json
+{
+  "connector_id": 1,
+  "full_code": "2РМТ14Б4Ш1В1В",
+  "gost": "ГОСТ 23325-78",
+  "connector_type": "2РМТ",
+  "body_size": "14",
+  "body_type": "Блочный",
+  "nozzle_type": "Прямой",
+  "nut_type": "С гайкой",
+  "contacts_quantity": 4,
+  "connector_part": "Вилка",
+  "contact_combination": "Ш",
+  "contact_coating": "Золото",
+  "heat_resistance": 250,
+  "special_design": null,
+  "climate_design": "Обычное",
+  "connection_type": "Резьбовое",
+  "contacts_info": [
+    {
+      "diameter": 1.5,
+      "max_resistance": 4.0,
+      "max_current": 10.0
+    }
+  ],
+  "documentation": [
+    {
+      "doc_name": "Техническая спецификация",
+      "doc_path": "/docs/spec_2rmt14b4sh1v1v.pdf",
+      "description": "Подробная техническая спецификация",
+      "upload_date": "2023-01-01T00:00:00"
+    }
+  ],
+  "created_at": "2023-01-01T00:00:00",
+  "updated_at": "2023-01-01T00:00:00"
+}
+```
+
+## Разработка
+
+### Структура API
+
+1. `api/models/` - Pydantic модели для валидации и сериализации данных
+2. `api/routers/` - Маршруты API с разделением по функциональности
+3. `api/database.py` - Модуль для работы с базой данных
+
+### Работа с базой данных
+
+Для работы с базой данных используется контекстные менеджеры:
+```python
+from api.database import get_db_cursor
+
+with get_db_cursor() as cursor:
+    cursor.execute("SELECT * FROM connector_types")
+    results = cursor.fetchall()
+``` 
