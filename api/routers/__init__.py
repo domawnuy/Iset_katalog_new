@@ -1,4 +1,7 @@
 """
-API routers package
+Router modules
 """
-from api.routers import groups, products 
+from . import groups
+from . import products
+from . import images
+from . import documents 

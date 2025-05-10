@@ -3,7 +3,7 @@ Main FastAPI application module
 """
 from fastapi import FastAPI
 
-from api.routers import groups, products
+from api.routers import groups, products, images, documents
 
 app = FastAPI(
     title="Iset Katalog API",
@@ -15,12 +15,15 @@ app = FastAPI(
     * Получение списка групп изделий
     * Получение списка продуктов в группе с пагинацией
     * Детальная информация по конкретному изделию
+    * Получение изображений и технических чертежей
+    * Доступ к технической документации
+    * Поиск по каталогу
     
     ## Формат данных
     
     Все данные передаются в формате JSON.
     """,
-    version="0.1.0",
+    version="0.2.0",
     docs_url="/docs",
     redoc_url="/redoc"
 )
@@ -28,6 +31,8 @@ app = FastAPI(
 # Добавляем глобальный префикс /api для всех маршрутов
 app.include_router(groups.router, prefix="/api")
 app.include_router(products.router, prefix="/api")
+app.include_router(images.router, prefix="/api")
+app.include_router(documents.router, prefix="/api")
 
 @app.get("/")
 async def root():
@@ -36,4 +41,4 @@ async def root():
     """
     return {"message": "Добро пожаловать в API каталога соединителей", 
             "docs_url": "/docs",
-            "api_version": "0.1.0"} 
+            "api_version": "0.2.0"} 
