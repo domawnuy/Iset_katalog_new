@@ -733,10 +733,17 @@ async def get_catalog_items(
 @router.get("/Search", response_model=List[ProductPreview])
 async def search_products(
     query: str = Query(..., min_length=2, description="Поисковый запрос"),
-    limit: int = Query(20, ge=1, le=50, description="Максимальное количество результатов")
+    limit: int = Query(30, ge=1, le=100, description="Максимальное количество результатов")
 ):
     """
-    Поиск продуктов по текстовому запросу
+    Расширенный поиск продуктов по текстовому запросу
+    
+    Поиск выполняется по следующим полям:
+    - Имя серии (точное и частичное совпадение)
+    - Описание продукта
+    - Название и код типа соединителя
+    - Размер корпуса
+    - Параметры в таблице electromechanical_parameters
     
     Parameters:
     - **query**: Текст для поиска
@@ -746,35 +753,340 @@ async def search_products(
     - Список найденных продуктов
     """
     try:
+        logging.info(f"[SEARCH] Начало поиска по запросу: '{query}', limit={limit}")
+        
+        # Проверяем, является ли запрос числом
+        is_numeric = False
+        numeric_value = None
+        try:
+            numeric_value = float(query)
+            is_numeric = True
+            logging.info(f"[SEARCH] Запрос интерпретирован как числовое значение: {numeric_value}")
+        except ValueError:
+            # Не число, продолжаем обработку как текста
+            logging.info(f"[SEARCH] Запрос интерпретирован как текст")
+            pass
+        
+        # Нормализуем строку запроса для улучшения поиска
+        # Удаляем пробелы внутри строки соединителя (например, "2РМТ 14" -> "2РМТ14")
+        normalized_query = query.replace(" ", "")
+        logging.info(f"[SEARCH] Нормализованный запрос: '{normalized_query}'")
+        
         with get_db_cursor() as cursor:
+            # Проверяем существование данных в базе
+            valid_query = False
+            valid_reasons = []
+            available_values = []
+            
+            # 1. Проверка на существование типа соединителя в БД
+            cursor.execute(
+                """
+                SELECT code, type_name 
+                FROM connector_types 
+                WHERE code = %s OR type_name = %s OR code ILIKE %s OR type_name ILIKE %s
+                """, 
+                (query, query, f"%{query}%", f"%{query}%")
+            )
+            connector_types = cursor.fetchall()
+            if connector_types:
+                valid_query = True
+                valid_reasons.append("тип соединителя")
+                available_values.extend([t["code"] for t in connector_types])
+                available_values.extend([t["type_name"] for t in connector_types])
+            
+            # 2. Проверка на существование серии соединителя в БД
+            cursor.execute(
+                """
+                SELECT series_name 
+                FROM connector_series 
+                WHERE series_name = %s OR series_name ILIKE %s OR REPLACE(series_name, ' ', '') = %s
+                """, 
+                (query, f"%{query}%", normalized_query)
+            )
+            series = cursor.fetchall()
+            if series:
+                valid_query = True
+                valid_reasons.append("серия соединителя")
+                available_values.extend([s["series_name"] for s in series])
+            
+            # 3. Если запрос числовой, проверяем существование такого размера
+            if is_numeric and numeric_value.is_integer():
+                size_code = int(numeric_value)
+                cursor.execute(
+                    """
+                    SELECT size_code 
+                    FROM connector_sizes 
+                    WHERE size_code = %s
+                    """, 
+                    (size_code,)
+                )
+                sizes = cursor.fetchall()
+                if sizes:
+                    valid_query = True
+                    valid_reasons.append("размер корпуса")
+                    available_values.extend([str(s["size_code"]) for s in sizes])
+                else:
+                    # Получаем доступные размеры для сообщения об ошибке
+                    cursor.execute("SELECT size_code FROM connector_sizes ORDER BY size_code")
+                    all_sizes = cursor.fetchall()
+                    all_available_sizes = [str(s["size_code"]) for s in all_sizes]
+                    
+                    # Если запрос числовой, но размер не найден - сообщаем, что такой размер не существует
+                    if not valid_query:
+                        raise HTTPException(
+                            status_code=400, 
+                            detail=f"Размер корпуса {size_code} не найден в базе данных. Доступные размеры: {', '.join(all_available_sizes)}"
+                        )
+            
+            # 4. Проверка на наличие в electromechanical_parameters
+            # Проверяем существование таблицы
+            cursor.execute("SELECT EXISTS(SELECT 1 FROM information_schema.tables WHERE table_name = 'electromechanical_parameters')")
+            table_exists = cursor.fetchone()["exists"]
+            
+            if table_exists:
+                search_term = f"%{query}%"
+                cursor.execute(
+                    """
+                    SELECT DISTINCT series_name
+                    FROM electromechanical_parameters
+                    WHERE series_name ILIKE %s
+                    LIMIT 5
+                    """, 
+                    (search_term,)
+                )
+                em_params = cursor.fetchall()
+                if em_params:
+                    valid_query = True
+                    valid_reasons.append("электромеханические параметры")
+                    available_values.extend([p["series_name"] for p in em_params])
+            
+            # Если запрос невалидный, возвращаем ошибку с доступными значениями
+            if not valid_query:
+                # Получаем примеры допустимых значений для справки
+                cursor.execute("SELECT code FROM connector_types LIMIT 5")
+                type_examples = [row["code"] for row in cursor.fetchall()]
+                
+                cursor.execute("SELECT series_name FROM connector_series LIMIT 5")
+                series_examples = [row["series_name"] for row in cursor.fetchall()]
+                
+                cursor.execute("SELECT size_code FROM connector_sizes ORDER BY size_code LIMIT 5")
+                size_examples = [str(row["size_code"]) for row in cursor.fetchall()]
+                
+                error_msg = (
+                    f"Запрос '{query}' не найден в базе данных. Примеры допустимых значений: "
+                    f"типы соединителей: {', '.join(type_examples)}, "
+                    f"серии: {', '.join(series_examples)}, "
+                    f"размеры: {', '.join(size_examples)}."
+                )
+                raise HTTPException(status_code=400, detail=error_msg)
+            
+            # Создаем словарь для отслеживания уникальных результатов
+            results_dict = {}
+            
+            # 1. Ищем точное совпадение по имени серии
+            logging.info(f"[SEARCH] Выполнение поиска по имени серии")
             cursor.execute(
                 """
                 SELECT 
-                    cs.series_id AS product_id,
-                    cs.series_name AS product_name,
-                    '' AS product_image_path
+                    cs.series_id, 
+                    cs.series_name,
+                    cs.description,
+                    ct.type_name,
+                    ct.code as type_code
                 FROM 
                     connector_series cs
-                LEFT JOIN
-                    connector_types ct ON substring(cs.series_name, 1, position(' ' in cs.series_name || ' ')-1) = ct.code
+                JOIN 
+                    connector_types ct ON cs.type_id = ct.type_id
+                WHERE 
+                    cs.series_name = %s OR
+                    cs.series_name = %s OR
+                    REPLACE(cs.series_name, ' ', '') = %s
+                LIMIT %s
+                """, 
+                (query, query.upper(), normalized_query, limit)
+            )
+            exact_matches = cursor.fetchall()
+            
+            for match in exact_matches:
+                results_dict[match["series_id"]] = {
+                    "product_id": match["series_id"],
+                    "product_name": match["series_name"],
+                    "product_image_path": f"/api/Images/GetProductImage/{match['series_id']}",
+                    "rank": 1,  # Наивысший ранг для точных совпадений
+                    "match_type": "exact_name"
+                }
+                
+            # 2. Ищем по подстроке в имени серии и описании
+            logging.info(f"[SEARCH] Поиск по подстроке в имени серии и описании")
+            search_term = f"%{query}%"
+            normalized_search_term = f"%{normalized_query}%"
+            
+            cursor.execute(
+                """
+                SELECT 
+                    cs.series_id, 
+                    cs.series_name,
+                    cs.description,
+                    ct.type_name,
+                    ct.code as type_code
+                FROM 
+                    connector_series cs
+                JOIN 
+                    connector_types ct ON cs.type_id = ct.type_id
                 WHERE 
                     cs.series_name ILIKE %s OR
+                    cs.description ILIKE %s OR
+                    REPLACE(cs.series_name, ' ', '') ILIKE %s OR
                     ct.type_name ILIKE %s OR
-                    cs.description ILIKE %s
-                ORDER BY 
-                    cs.series_name
+                    ct.code ILIKE %s
                 LIMIT %s
-                """,
-                (f"%{query}%", f"%{query}%", f"%{query}%", limit)
+                """, 
+                (search_term, search_term, normalized_search_term, search_term, search_term, limit)
             )
             
-            products = cursor.fetchall()
+            partial_matches = cursor.fetchall()
             
-            # Обновляем пути к изображениям
-            for product in products:
-                product["product_image_path"] = f"/api/Images/GetProductImage/{product['product_id']}"
+            for match in partial_matches:
+                if match["series_id"] not in results_dict:
+                    results_dict[match["series_id"]] = {
+                        "product_id": match["series_id"],
+                        "product_name": match["series_name"],
+                        "product_image_path": f"/api/Images/GetProductImage/{match['series_id']}",
+                        "rank": 2,  # Средний ранг для частичных совпадений
+                        "match_type": "partial_match"
+                    }
+            
+            # 3. Если запрос числовой, ищем по размеру корпуса
+            if is_numeric and numeric_value.is_integer():
+                size_code = int(numeric_value)
+                logging.info(f"[SEARCH] Поиск по размеру корпуса: {size_code}")
                 
-            return products
+                # Так как мы уже проверили существование размера выше,
+                # здесь не требуется дополнительная проверка
+                cursor.execute(
+                    """
+                    SELECT 
+                        cs.series_id, 
+                        cs.series_name,
+                        cs.description,
+                        ct.type_name,
+                        ct.code as type_code,
+                        csz.size_code
+                    FROM 
+                        connector_series cs
+                    JOIN 
+                        connector_types ct ON cs.type_id = ct.type_id
+                    JOIN 
+                        series_sizes ss ON cs.series_id = ss.series_id
+                    JOIN 
+                        connector_sizes csz ON ss.size_id = csz.size_id
+                    WHERE 
+                        csz.size_code = %s
+                    LIMIT %s
+                    """, 
+                    (size_code, limit)
+                )
+                
+                size_matches = cursor.fetchall()
+                
+                for match in size_matches:
+                    if match["series_id"] not in results_dict:
+                        results_dict[match["series_id"]] = {
+                            "product_id": match["series_id"],
+                            "product_name": match["series_name"],
+                            "product_image_path": f"/api/Images/GetProductImage/{match['series_id']}",
+                            "rank": 3,  # Низкий ранг для совпадений по размеру
+                            "match_type": "size_match"
+                        }
             
+            # 4. Ищем в таблице electromechanical_parameters, если таблица существует
+            if table_exists:
+                try:
+                    logging.info(f"[SEARCH] Поиск в таблице электромеханических параметров")
+                    
+                    params = []
+                    conditions = []
+                    
+                    # Добавляем условие поиска по имени серии
+                    conditions.append("ep.series_name ILIKE %s")
+                    params.append(search_term)
+                    
+                    # Если запрос числовой, ищем также по числовым параметрам
+                    if is_numeric:
+                        conditions.append("CAST(ep.contact_quantity AS TEXT) = %s")
+                        params.append(query)
+                        
+                        conditions.append("(ep.contact_diameter IS NOT NULL AND ABS(ep.contact_diameter - %s) < 0.01)")
+                        params.append(numeric_value)
+                        
+                        conditions.append("(ep.max_current IS NOT NULL AND ABS(ep.max_current - %s) < 0.01)")
+                        params.append(numeric_value)
+                    
+                    sql_query = f"""
+                    SELECT DISTINCT
+                        cs.series_id, 
+                        cs.series_name,
+                        cs.description,
+                        ep.contact_quantity,
+                        ep.contact_diameter,
+                        ep.max_current
+                    FROM 
+                        connector_series cs
+                    JOIN 
+                        electromechanical_parameters ep ON cs.series_name = ep.series_name
+                    WHERE 
+                        {" OR ".join(conditions)}
+                    LIMIT %s
+                    """
+                    
+                    params.append(limit)
+                    
+                    cursor.execute(sql_query, tuple(params))
+                    
+                    param_matches = cursor.fetchall()
+                    
+                    for match in param_matches:
+                        if match["series_id"] not in results_dict:
+                            results_dict[match["series_id"]] = {
+                                "product_id": match["series_id"],
+                                "product_name": match["series_name"],
+                                "product_image_path": f"/api/Images/GetProductImage/{match['series_id']}",
+                                "rank": 4,  # Самый низкий ранг для совпадений по параметрам
+                                "match_type": "param_match"
+                            }
+                except Exception as e:
+                    logging.error(f"[SEARCH] Ошибка при поиске в таблице electromechanical_parameters: {e}")
+            
+            # Преобразуем результаты в список и сортируем по рангу (сначала самые релевантные)
+            results = list(results_dict.values())
+            results.sort(key=lambda x: x["rank"])
+            
+            # Удаляем поля ранга и типа совпадения из конечного результата
+            for result in results:
+                if "rank" in result:
+                    del result["rank"]
+                if "match_type" in result:
+                    del result["match_type"]
+            
+            # Ограничиваем количество результатов
+            results = results[:limit]
+            
+            # Если после всех проверок результаты отсутствуют, возвращаем ошибку
+            if not results:
+                found_in = ", ".join(valid_reasons)
+                raise HTTPException(
+                    status_code=400, 
+                    detail=f"По запросу '{query}' не найдено конкретных продуктов, хотя запрос был распознан как {found_in}."
+                )
+            
+            logging.info(f"[SEARCH] Найдено {len(results)} результатов для запроса '{query}'")
+            
+            return results
+            
+    except HTTPException:
+        # Пробрасываем HTTP исключения дальше
+        raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Ошибка при поиске продуктов: {str(e)}") 
+        error_message = str(e)
+        logging.error(f"[SEARCH] Ошибка при поиске продуктов: {error_message}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Ошибка при поиске продуктов: {error_message}") 
