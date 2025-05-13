@@ -24,8 +24,14 @@ Iset_katalog4/
 │   ├── schema/             # Схемы таблиц
 │   ├── queries/            # SQL запросы
 │   ├── migrations/         # Миграции БД
-│   └── functions/          # Функции для работы с БД
+│   ├── functions/          # Функции для работы с БД
+│   └── Zapchasti/          # Папка с изображениями и исходниками
+│       └── 2РМТ, 2РМДТ/    # Изображения для соединителей типа 2РМТ и 2РМДТ
+│           └── ishodniki/  # Исходные файлы
+│               └── PNG/    # PNG и SVG изображения соединителей
+│                   └── PDF/# PDF файлы с техническими чертежами
 ├── .env                    # Переменные окружения
+├── check_db.py             # Скрипт проверки структуры и целостности БД
 ├── run_api_server.py       # Скрипт запуска API сервера
 └── requirements.txt        # Зависимости проекта
 ```
@@ -55,7 +61,7 @@ pip install -r requirements.txt
    - Создайте файл `.env` в корневой директории проекта
    - Укажите параметры подключения к БД:
 ```
-DB_NAME=iset_katalog
+DB_NAME=connector_catalog
 DB_USER=postgres
 DB_PASSWORD=ваш_пароль
 DB_HOST=localhost
@@ -77,6 +83,19 @@ python run_api_server.py
 Сервер будет доступен по адресу: http://localhost:8000
 
 Документация API (Swagger): http://localhost:8000/docs
+
+## Проверка структуры базы данных
+
+Для проверки структуры и целостности базы данных выполните:
+```bash
+python check_db.py
+```
+
+Скрипт проверит:
+- Наличие всех необходимых таблиц
+- Структуру таблиц (колонки, типы данных)
+- Корректность работы ключевых SQL-запросов API
+- Наличие внешних ключей и связей между таблицами
 
 ## API эндпоинты
 
@@ -116,12 +135,12 @@ GET /api/Products/GetProductsByGroupId?group_id=1&page=1&page_size=10
 {
   "items": [
     {
-      "product_id": 1,
-      "product_name": "2РМТ14Б4Ш1В1В",
-      "product_image_path": "/images/2rmt14b4sh1v1v.jpg"
+      "product_id": 5,
+      "product_name": "2РМТ",
+      "product_image_path": "/api/Images/GetProductImage/5"
     }
   ],
-  "total_count": 150,
+  "total_count": 1,
   "page": 1,
   "page_size": 10
 }
@@ -130,7 +149,7 @@ GET /api/Products/GetProductsByGroupId?group_id=1&page=1&page_size=10
 ### 3. Получение детальной информации об изделии
 
 ```
-GET /api/Products/GetById?product_id=1
+GET /api/Products/GetById?product_id=5
 ```
 
 **Параметры:**
@@ -139,40 +158,49 @@ GET /api/Products/GetById?product_id=1
 **Ответ:**
 ```json
 {
-  "connector_id": 1,
-  "full_code": "2РМТ14Б4Ш1В1В",
-  "gost": "ГОСТ 23325-78",
+  "connector_id": 5,
+  "full_code": "2РМТ",
+  "gost": "ГОСТ В 23476.8-86",
   "connector_type": "2РМТ",
-  "body_size": "14",
-  "body_type": "Блочный",
-  "nozzle_type": "Прямой",
-  "nut_type": "С гайкой",
-  "contacts_quantity": 4,
-  "connector_part": "Вилка",
-  "contact_combination": "Ш",
-  "contact_coating": "Золото",
-  "heat_resistance": 250,
-  "special_design": null,
-  "climate_design": "Обычное",
-  "connection_type": "Резьбовое",
+  "body_size": "стандартный",
+  "body_type": "стандартный",
+  "contact_coating": "золото",
+  "heat_resistance": 100,
+  "climate_design": "УХЛ",
+  "connection_type": "резьбовое",
   "contacts_info": [
     {
-      "diameter": 1.5,
-      "max_resistance": 4.0,
-      "max_current": 10.0
+      "diameter": 1.0,
+      "max_resistance": 5.0,
+      "max_current": 8.0
     }
   ],
   "documentation": [
     {
       "doc_name": "Техническая спецификация",
-      "doc_path": "/docs/spec_2rmt14b4sh1v1v.pdf",
-      "description": "Подробная техническая спецификация",
-      "upload_date": "2023-01-01T00:00:00"
+      "doc_path": "/api/Documents/GetDocumentById/1?product_id=5",
+      "description": "Спецификация для 2РМТ",
+      "upload_date": "2024-01-01"
     }
   ],
-  "created_at": "2023-01-01T00:00:00",
-  "updated_at": "2023-01-01T00:00:00"
+  "images": [
+    "/api/Images/GetProductImage/5",
+    "/api/Images/GetProductImage/5?view=front",
+    "/api/Images/GetProductImage/5?view=side",
+    "/api/Images/GetTechnicalDrawing/5"
+  ],
+  "created_at": "2024-01-01",
+  "updated_at": "2024-01-01"
 }
+```
+
+### 4. Получение изображений
+
+```
+GET /api/Images/GetProductImage/{product_id}
+GET /api/Images/GetProductImage/{product_id}?view=front
+GET /api/Images/GetProductImage/{product_id}?view=side
+GET /api/Images/GetTechnicalDrawing/{product_id}
 ```
 
 ## Разработка
@@ -180,7 +208,11 @@ GET /api/Products/GetById?product_id=1
 ### Структура API
 
 1. `api/models/` - Pydantic модели для валидации и сериализации данных
-2. `api/routers/` - Маршруты API с разделением по функциональности
+2. `api/routers/` - Маршруты API с разделением по функциональности:
+   - `groups.py` - API группы соединителей
+   - `products.py` - API получения информации о соединителях
+   - `documents.py` - API работы с документацией
+   - `images.py` - API доступа к изображениям
 3. `api/database.py` - Модуль для работы с базой данных
 
 ### Работа с базой данных
@@ -192,4 +224,13 @@ from api.database import get_db_cursor
 with get_db_cursor() as cursor:
     cursor.execute("SELECT * FROM connector_types")
     results = cursor.fetchall()
-``` 
+```
+
+## Последние обновления
+
+### Обновление от 13.05.2024
+- Добавлено поле `type_id` в таблицу `connector_series` для корректной связи с `connector_types`
+- Добавлены изображения для соединителей 2РМТ и 2РМДТ (PNG, SVG, PDF)
+- Исправлены запросы API для корректного получения продуктов по группе
+- Добавлен скрипт проверки структуры и целостности БД (`check_db.py`)
+- Обновлена документация и улучшены описания API-эндпоинтов 
