@@ -3,6 +3,7 @@ Router for products
 """
 from fastapi import APIRouter, HTTPException, Query, Path
 from typing import List, Dict, Any, Optional
+import logging
 
 from api.models.product import (
     ProductPreview, ProductPage, ProductDetail, ContactInfo, 
@@ -574,48 +575,159 @@ async def get_catalog_items(
     - Список продуктов для отображения в каталоге
     """
     try:
-        with get_db_cursor() as cursor:
-            # Формируем базовый запрос с параметрами фильтрации
-            query = """
-            SELECT 
-                cs.series_id AS product_id,
-                cs.series_name AS product_name,
-                '' AS product_image_path
-            FROM 
-                connector_series cs
-            """
+        logging.info(f"GetCatalogItems вызван с параметрами: type_filter={type_filter}, size_filter={size_filter}, limit={limit}")
+        
+        # Пробуем использовать прямое подключение к БД с правильной кодировкой
+        try:
+            import psycopg2
+            from database.connection.db_connector import get_db_connection
             
-            where_clauses = []
-            params = []
-            
-            if type_filter:
-                # Поиск по типу соединителя
-                where_clauses.append("cs.series_name LIKE %s")
-                params.append(f"{type_filter}%")
+            # Получаем соединение с UTF-8 кодировкой
+            conn = get_db_connection()
+            with conn.cursor(cursor_factory=psycopg2.extras.DictCursor) as cursor:
+                # Базовый запрос без фильтров
+                query = """
+                SELECT 
+                    cs.series_id AS product_id,
+                    cs.series_name AS product_name,
+                    '' AS product_image_path
+                FROM 
+                    connector_series cs
+                """
                 
-            if size_filter:
-                # Поиск по размеру корпуса в названии
-                where_clauses.append("cs.series_name LIKE %s")
-                params.append(f"%{size_filter}%")
+                params = []
+                where_clauses = []
+                joins = []
                 
-            if where_clauses:
-                query += " WHERE " + " AND ".join(where_clauses)
+                # Добавляем JOIN к типам соединителей всегда
+                joins.append("JOIN connector_types ct ON cs.type_id = ct.type_id")
                 
-            query += " ORDER BY cs.series_name LIMIT %s"
-            params.append(limit)
-            
-            # Выполняем запрос
-            cursor.execute(query, tuple(params))
-            products = cursor.fetchall()
-            
-            # Обновляем пути к изображениям
-            for product in products:
-                product["product_image_path"] = f"/api/Images/GetProductImage/{product['product_id']}"
+                # Фильтр по типу соединителя
+                if type_filter:
+                    logging.info(f"Применение фильтра по типу: {type_filter}")
+                    if type_filter.isdigit():
+                        # Числовой фильтр - ищем по ID типа
+                        # Проверяем существование типа
+                        cursor.execute("""
+                            SELECT EXISTS(SELECT 1 FROM connector_types WHERE type_id = %s)
+                        """, (int(type_filter),))
+                        type_exists = cursor.fetchone()[0]
+                        
+                        if not type_exists:
+                            logging.warning(f"Тип с ID {type_filter} не найден в базе данных")
+                            raise HTTPException(status_code=400, detail=f"Тип соединителя с ID {type_filter} не найден в базе данных")
+                            
+                        where_clauses.append("cs.type_id = %s")
+                        params.append(int(type_filter))
+                    else:
+                        # Текстовый фильтр - проверяем существование в базе
+                        cursor.execute("""
+                            SELECT EXISTS(SELECT 1 FROM connector_types 
+                                         WHERE code = %s OR type_name = %s)
+                        """, (type_filter, type_filter))
+                        type_exists = cursor.fetchone()[0]
+                        
+                        if not type_exists:
+                            logging.warning(f"Тип '{type_filter}' не найден в базе данных")
+                            raise HTTPException(status_code=400, detail=f"Тип соединителя '{type_filter}' не найден в базе данных")
+                            
+                        # Текстовый фильтр - ищем по названию или коду типа
+                        where_clauses.append("(ct.code = %s OR ct.type_name = %s)")
+                        params.append(type_filter)
+                        params.append(type_filter)
                 
-            return products
+                # Фильтр по размеру корпуса
+                if size_filter:
+                    logging.info(f"Применение фильтра по размеру: {size_filter}")
+                    try:
+                        # Преобразуем в число для проверки, если возможно
+                        size_code = int(size_filter)
+                        
+                        # Сначала проверяем, есть ли такой размер в базе
+                        cursor.execute("""
+                            SELECT size_id, size_code 
+                            FROM connector_sizes 
+                            WHERE size_code = %s
+                        """, (size_code,))
+                        
+                        size_row = cursor.fetchone()
+                        if size_row:
+                            logging.info(f"Найден размер с id={size_row['size_id']} и кодом {size_row['size_code']}")
+                            
+                            # Добавляем JOIN к таблице series_sizes напрямую
+                            joins.append("""
+                                JOIN series_sizes ss ON cs.series_id = ss.series_id
+                            """)
+                            where_clauses.append("ss.size_id = %s")
+                            params.append(size_row['size_id'])
+                        else:
+                            # Если размер не найден, возвращаем ошибку вместо всех продуктов
+                            logging.warning(f"Размер с кодом {size_code} не найден в таблице connector_sizes")
+                            raise HTTPException(
+                                status_code=400, 
+                                detail=f"Размер корпуса {size_code} не найден в базе данных. Доступные размеры: 14, 18, 22"
+                            )
+                    except ValueError:
+                        # Если не число, возвращаем ошибку
+                        logging.warning(f"Размер '{size_filter}' не является числом, некорректный формат")
+                        raise HTTPException(
+                            status_code=400, 
+                            detail=f"Некорректный формат размера '{size_filter}'. Размер должен быть числом. Доступные размеры: 14, 18, 22"
+                        )
+                
+                # Собираем полный запрос
+                if joins:
+                    query += " " + " ".join(joins)
+                    
+                if where_clauses:
+                    query += " WHERE " + " AND ".join(where_clauses)
+                
+                # Добавляем сортировку и лимит
+                query += " ORDER BY cs.series_name LIMIT %s"
+                params.append(limit)
+                
+                # Логируем финальный запрос для отладки
+                logging.info(f"SQL запрос: {query}")
+                logging.info(f"Параметры: {params}")
+                
+                # Выполняем запрос
+                cursor.execute(query, tuple(params))
+                products = [dict(row) for row in cursor.fetchall()]
+                logging.info(f"Найдено продуктов: {len(products)}")
+                
+                # Если ничего не найдено, возвращаем пустой список с информацией
+                if not products:
+                    logging.info("Не найдено продуктов по заданным критериям")
+                
+                # Добавляем пути к изображениям
+                for product in products:
+                    product["product_image_path"] = f"/api/Images/GetProductImage/{product['product_id']}"
+                
+                conn.close()
+                return products
+                
+        except HTTPException:
+            # Пробрасываем HTTP исключения дальше
+            raise
+        except Exception as e:
+            # Если возникла ошибка, логируем её
+            error_msg = str(e)
+            logging.error(f"Ошибка при прямом подключении к БД: {error_msg}", exc_info=True)
             
+            # Проверяем, не ошибка ли это с размером/типом, чтобы вернуть правильную ошибку
+            if "не найден" in error_msg.lower() or "некорректный" in error_msg.lower():
+                raise HTTPException(status_code=400, detail=error_msg)
+            
+            # Если другие ошибки, возвращаем общую ошибку сервера
+            raise HTTPException(status_code=500, detail=f"Ошибка при получении элементов каталога: {error_msg}")
+            
+    except HTTPException:
+        # Пробрасываем HTTP исключения дальше
+        raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Ошибка при получении элементов каталога: {str(e)}")
+        error_detail = str(e)
+        logging.error(f"Ошибка при получении элементов каталога: {error_detail}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Ошибка при получении элементов каталога: {error_detail}")
 
 
 @router.get("/Search", response_model=List[ProductPreview])

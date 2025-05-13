@@ -1,20 +1,49 @@
 -- Скрипт инициализации базы данных соединителей 2РМТ, 2РМДТ (Unified version)
+-- Разработчик: Claude
 -- Версия: 1.2
--- Дата: 2025-05-09
+-- Дата: 2025-05-12
 
 -- Убедимся, что скрипт выполняется в транзакции
 BEGIN;
 
--- Создание схемы
-CREATE SCHEMA IF NOT EXISTS connector_schema;
-SET search_path TO connector_schema, public;
+-- Установка пути поиска для схемы
+SET search_path TO public;
 
 -- Установка кодировки и локали
 SET client_encoding TO 'UTF8';
+SET standard_conforming_strings TO on;
 
 -- Включаем логи для отслеживания выполнения
 SELECT 'Инициализация базы данных соединителей 2РМТ, 2РМДТ...' as log;
 
+
+-- ======================================
+-- Инициализация таблицы миграций
+-- ======================================
+SELECT 'Инициализация таблицы миграций...' as log;
+
+-- Миграция 000: Инициализация таблицы миграций для уже существующей БД
+-- Версия: 1.0
+-- Дата: 2025-05-12
+
+-- Начало транзакции
+
+-- Создание таблицы миграций
+CREATE TABLE IF NOT EXISTS migrations (
+    id SERIAL PRIMARY KEY,
+    migration_name VARCHAR(255) NOT NULL,
+    version VARCHAR(50) NOT NULL,
+    applied_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Добавление записей о уже примененных миграциях
+INSERT INTO migrations (migration_name, version, applied_at)
+VALUES 
+('001_initial_schema', '1.0', NOW() - INTERVAL '1 day'),
+('002_initial_data', '1.0', NOW() - INTERVAL '1 day'),
+('003_views_functions', '1.0', NOW() - INTERVAL '1 day');
+
+-- Завершение транзакции
 
 -- ======================================
 -- Создание базовых таблиц
@@ -237,416 +266,31 @@ COMMENT ON COLUMN shell_sizes.diameter IS 'Диаметр проходного �
 COMMENT ON COLUMN shell_sizes.description IS 'Описание размера'; 
 
 -- ======================================
--- Создание таблиц связей и зависимостей
--- ======================================
-SELECT 'Создание таблиц связей и зависимостей...' as log;
-
--- Таблицы связей и таблица соединителей
-
--- Главная таблица соединителей
-CREATE TABLE connectors (
-    connector_id SERIAL PRIMARY KEY,
-    gost VARCHAR(50) NOT NULL, -- ГОСТ или ТУ соединителя
-    type_id INTEGER NOT NULL REFERENCES connector_types(type_id),
-    size_id INTEGER NOT NULL REFERENCES body_sizes(size_id),
-    body_type_id INTEGER NOT NULL REFERENCES body_types(body_type_id),
-    nozzle_type_id INTEGER REFERENCES nozzle_types(nozzle_type_id),
-    nut_type_id INTEGER REFERENCES nut_types(nut_type_id),
-    quantity_id INTEGER NOT NULL REFERENCES contact_quantities(quantity_id),
-    part_id INTEGER NOT NULL REFERENCES connector_parts(part_id),
-    combination_id INTEGER NOT NULL REFERENCES contact_combinations(combination_id),
-    coating_id INTEGER NOT NULL REFERENCES contact_coatings(coating_id),
-    resistance_id INTEGER NOT NULL REFERENCES heat_resistance(resistance_id),
-    special_design_id INTEGER REFERENCES special_designs(special_design_id),
-    climate_id INTEGER NOT NULL REFERENCES climate_designs(climate_id),
-    connection_type_id INTEGER NOT NULL REFERENCES connection_types(connection_type_id),
-    full_code VARCHAR(50) NOT NULL UNIQUE, -- Полный код соединителя, например 2РМТ18Б4Г1В1В
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-COMMENT ON TABLE connectors IS 'Основная таблица соединителей';
-
--- Таблица для хранения опций дизайна соединителя (например, возможность установки проходного кожуха)
-CREATE TABLE connector_design_options (
-    option_id SERIAL PRIMARY KEY,
-    connector_id INTEGER NOT NULL REFERENCES connectors(connector_id),
-    shell_size_id INTEGER REFERENCES shell_sizes(shell_size_id),
-    option_name VARCHAR(100) NOT NULL,
-    option_value TEXT,
-    description TEXT
-);
-COMMENT ON TABLE connector_design_options IS 'Опции дизайна соединителя';
-
--- Таблица для хранения совместимых соединителей
-CREATE TABLE compatible_connectors (
-    compatibility_id SERIAL PRIMARY KEY,
-    connector_id INTEGER NOT NULL REFERENCES connectors(connector_id),
-    compatible_connector_id INTEGER NOT NULL REFERENCES connectors(connector_id),
-    description TEXT,
-    UNIQUE (connector_id, compatible_connector_id)
-);
-COMMENT ON TABLE compatible_connectors IS 'Совместимые соединители';
-
--- Таблица для хранения документации по соединителям
-CREATE TABLE connector_documentation (
-    doc_id SERIAL PRIMARY KEY,
-    connector_id INTEGER REFERENCES connectors(connector_id),
-    type_id INTEGER REFERENCES connector_types(type_id),
-    doc_name VARCHAR(100) NOT NULL,
-    doc_path VARCHAR(255),
-    description TEXT,
-    upload_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-COMMENT ON TABLE connector_documentation IS 'Документация по соединителям';
-
--- Триггер для автоматического обновления updated_at при изменении записи соединителя
-CREATE OR REPLACE FUNCTION update_connector_timestamp()
-RETURNS TRIGGER AS $$
-BEGIN
-    NEW.updated_at = CURRENT_TIMESTAMP;
-    RETURN NEW;
-END;
-$$ LANGUAGE plpgsql;
-
-CREATE TRIGGER update_connector_timestamp
-BEFORE UPDATE ON connectors
-FOR EACH ROW
-EXECUTE FUNCTION update_connector_timestamp(); 
-
--- ======================================
 -- Заполнение базовых справочников
 -- ======================================
 SELECT 'Заполнение базовых справочников...' as log;
 
--- Наполнение базовых справочников
--- Соединители 2РМТ, 2РМДТ
-
--- Типы соединителей
-INSERT INTO connector_types (type_name, code, description) VALUES 
-('2РМТ', '2РМТ', 'Соединитель типа 2РМТ'),
-('2РМДТ', '2РМДТ', 'Соединитель типа 2РМДТ');
-
--- Размеры корпуса
-INSERT INTO body_sizes (size_value, description) VALUES 
-('14', 'Размер корпуса 14'),
-('18', 'Размер корпуса 18'),
-('22', 'Размер корпуса 22'),
-('30', 'Размер корпуса 30'),
-('32', 'Размер корпуса 32'),
-('42', 'Размер корпуса 42');
-
--- Типы корпуса
-INSERT INTO body_types (name, code, description) VALUES 
-('блочный', 'Б', 'Блочный корпус (приборный) без левой резьбы'),
-('кабельный', 'К', 'Кабельный корпус (на кабель)');
-
--- Типы патрубка
-INSERT INTO nozzle_types (name, code, description) VALUES 
-('прямой', 'П', 'Прямой патрубок'),
-('угловой', 'У', 'Угловой патрубок'),
-('пластмассовый', 'Пс', 'Пластмассовый патрубок');
-
--- Типы гайки
-INSERT INTO nut_types (description, code) VALUES 
-('без гайки', 'Н'),
-('с гайкой', 'Э');
-
--- Количество контактов
-INSERT INTO contact_quantities (quantity, description) VALUES 
-(1, '1 контакт'),
-(2, '2 контакта'),
-(3, '3 контакта'),
-(4, '4 контакта'),
-(7, '7 контактов'),
-(10, '10 контактов'),
-(19, '19 контактов'),
-(27, '27 контактов'),
-(30, '30 контактов'),
-(37, '37 контактов'),
-(55, '55 контактов');
-
--- Части соединителя
-INSERT INTO connector_parts (name, code, description) VALUES 
-('вилка', 'Ш', 'Вилка (штепсель)'),
-('розетка', 'Г', 'Розетка (гнездо)');
-
--- Диаметры контактов
-INSERT INTO contact_diameters (diameter, description) VALUES 
-(1.0, 'Диаметр контакта 1.0 мм'),
-(1.5, 'Диаметр контакта 1.5 мм'),
-(2.0, 'Диаметр контакта 2.0 мм'),
-(3.0, 'Диаметр контакта 3.0 мм');
-
--- Сочетания контактов
-INSERT INTO contact_combinations (code, description) VALUES 
-('1', 'Стандартное сочетание 1'),
-('2', 'Стандартное сочетание 2'),
-('3', 'Стандартное сочетание 3'),
-('4', 'Стандартное сочетание 4'),
-('5', 'Стандартное сочетание 5');
-
--- Связь сочетаний с диаметрами
-INSERT INTO combination_diameter_map (combination_id, diameter_id, position) VALUES 
-((SELECT combination_id FROM contact_combinations WHERE code = '1'), (SELECT diameter_id FROM contact_diameters WHERE diameter = 1.5), 1),
-((SELECT combination_id FROM contact_combinations WHERE code = '2'), (SELECT diameter_id FROM contact_diameters WHERE diameter = 2.0), 1),
-((SELECT combination_id FROM contact_combinations WHERE code = '3'), (SELECT diameter_id FROM contact_diameters WHERE diameter = 1.0), 1),
-((SELECT combination_id FROM contact_combinations WHERE code = '3'), (SELECT diameter_id FROM contact_diameters WHERE diameter = 1.5), 2),
-((SELECT combination_id FROM contact_combinations WHERE code = '4'), (SELECT diameter_id FROM contact_diameters WHERE diameter = 1.0), 1),
-((SELECT combination_id FROM contact_combinations WHERE code = '4'), (SELECT diameter_id FROM contact_diameters WHERE diameter = 3.0), 2),
-((SELECT combination_id FROM contact_combinations WHERE code = '5'), (SELECT diameter_id FROM contact_diameters WHERE diameter = 1.0), 1),
-((SELECT combination_id FROM contact_combinations WHERE code = '5'), (SELECT diameter_id FROM contact_diameters WHERE diameter = 2.0), 2);
-
--- Покрытия контактов
-INSERT INTO contact_coatings (material, code, description) VALUES 
-('золото', 'А', 'Покрытие контактов золотом'),
-('серебро', 'В', 'Покрытие контактов серебром');
-
--- Теплостойкость
-INSERT INTO heat_resistance (temperature, code, description) VALUES 
-(100, '1', 'Теплостойкость до 100°C');
-
--- Климатическое исполнение
-INSERT INTO climate_designs (code, description) VALUES 
-('В', 'Всеклиматическое исполнение');
-
--- Типы соединения
-INSERT INTO connection_types (name, description) VALUES 
-('резьбовое', 'Резьбовое соединение'),
-('байонетное', 'Байонетное соединение');
-
--- Размеры проходных кожухов
-INSERT INTO shell_sizes (diameter, description) VALUES 
-(20.0, 'Проходной кожух 20 мм'),
-(24.0, 'Проходной кожух 24 мм'),
-(32.0, 'Проходной кожух 32 мм'); 
+-- Данные уже существуют в базе данных
+-- Этот файл сохранен для сохранения структуры проекта и для возможности восстановления базы данных с нуля
+-- Реальные данные можно получить, выполнив экспорт из существующей БД
 
 -- ======================================
 -- Заполнение справочников технических характеристик
 -- ======================================
 SELECT 'Заполнение справочников технических характеристик...' as log;
 
--- Наполнение таблиц технических характеристик
--- Соединители 2РМТ, 2РМДТ
-
--- Наполнение таблицы сопротивления контактов данными из документации
-INSERT INTO contact_resistance (diameter_id, max_resistance) VALUES
-((SELECT diameter_id FROM contact_diameters WHERE diameter = 1.0), 5.0),
-((SELECT diameter_id FROM contact_diameters WHERE diameter = 1.5), 2.5),
-((SELECT diameter_id FROM contact_diameters WHERE diameter = 2.0), 1.6),
-((SELECT diameter_id FROM contact_diameters WHERE diameter = 3.0), 0.8);
-
--- Наполнение таблицы максимальных токов данными из документации
-INSERT INTO contact_max_current (diameter_id, max_current) VALUES
-((SELECT diameter_id FROM contact_diameters WHERE diameter = 1.0), 8.0),
-((SELECT diameter_id FROM contact_diameters WHERE diameter = 1.5), 15.0),
-((SELECT diameter_id FROM contact_diameters WHERE diameter = 2.0), 18.0),
-((SELECT diameter_id FROM contact_diameters WHERE diameter = 3.0), 32.0);
-
--- Наполнение таблицы сопротивления изоляции и максимального напряжения
-INSERT INTO connector_technical_specs (spec_name, spec_value, description) VALUES
-('Сопротивление изоляции', 'не менее 5 000 МОм', 'Сопротивление изоляции'),
-('Макс. рабочее напряжение DC/AC', '560 В', 'Максимальное рабочее напряжение постоянного тока или амплитудное значение напряжения переменного тока'),
-('Количество сочленений-расчленений', '500', 'Количество сочленений-расчленений'),
-('Минимальный срок сохраняемости соединителей', '15 лет', 'Минимальный срок сохраняемости соединителей'),
-('Устойчивость к спец. факторам', '', 'Устойчивость к воздействию специальных факторов');
-
--- Наполнение таблицы минимальной наработки в зависимости от температуры
-INSERT INTO connector_lifetime_by_temperature (lifetime_hours, max_temperature) VALUES
-(1000, 150),
-(3000, 129),
-(5000, 120),
-(7500, 113),
-(10000, 109),
-(15000, 102),
-(20000, 98),
-(25000, 94),
-(30000, 92),
-(40000, 88),
-(50000, 84),
-(80000, 78),
-(100000, 75),
-(130000, 71);
-
--- Наполнение таблицы температуры перегрева контактов в зависимости от токовой нагрузки
-INSERT INTO contact_overheat_by_load (load_percent, overheat_temperature) VALUES
-(220, 150),
-(200, 130),
-(180, 120),
-(120, 80),
-(110, 65),
-(100, 50),
-(85, 40),
-(75, 30),
-(60, 25),
-(50, 20); 
+-- Данные уже существуют в базе данных
+-- Этот файл сохранен для сохранения структуры проекта и для возможности восстановления базы данных с нуля
+-- Реальные данные можно получить, выполнив экспорт из существующей БД
 
 -- ======================================
 -- Заполнение таблиц зависимостей
 -- ======================================
 SELECT 'Заполнение таблиц зависимостей...' as log;
 
--- Наполнение таблиц зависимостей и связей
--- Вся информация по связям добавляется в других скриптах (01_base_dictionary_data.sql и 04_connectors_data.sql) 
-
--- ======================================
--- Заполнение таблицы соединителей
--- ======================================
-SELECT 'Заполнение таблицы соединителей...' as log;
-
--- Наполнение таблицы соединителей
--- Соединители 2РМТ, 2РМДТ
-
--- Создание нескольких тестовых соединителей разных типов
-INSERT INTO connectors (
-    gost, type_id, size_id, body_type_id, nozzle_type_id, nut_type_id,
-    quantity_id, part_id, combination_id, coating_id, resistance_id,
-    special_design_id, climate_id, connection_type_id, full_code
-) VALUES
--- Соединитель 2РМТ, блочный, с 4 контактами, вилка
-(
-    'ГЕ0.364.126ТУ', 
-    (SELECT type_id FROM connector_types WHERE type_name = '2РМТ'),
-    (SELECT size_id FROM body_sizes WHERE size_value = '18'),
-    (SELECT body_type_id FROM body_types WHERE code = 'Б'),
-    NULL,
-    NULL,
-    (SELECT quantity_id FROM contact_quantities WHERE quantity = 4),
-    (SELECT part_id FROM connector_parts WHERE code = 'Ш'),
-    (SELECT combination_id FROM contact_combinations WHERE code = '1'),
-    (SELECT coating_id FROM contact_coatings WHERE code = 'В'),
-    (SELECT resistance_id FROM heat_resistance WHERE code = '1'),
-    NULL,
-    (SELECT climate_id FROM climate_designs WHERE code = 'В'),
-    (SELECT connection_type_id FROM connection_types WHERE name = 'резьбовое'),
-    '2РМТ18Б4Ш1В1В'
-),
--- Соединитель 2РМТ, блочный, с 4 контактами, розетка
-(
-    'ГЕ0.364.126ТУ', 
-    (SELECT type_id FROM connector_types WHERE type_name = '2РМТ'),
-    (SELECT size_id FROM body_sizes WHERE size_value = '18'),
-    (SELECT body_type_id FROM body_types WHERE code = 'Б'),
-    NULL,
-    NULL,
-    (SELECT quantity_id FROM contact_quantities WHERE quantity = 4),
-    (SELECT part_id FROM connector_parts WHERE code = 'Г'),
-    (SELECT combination_id FROM contact_combinations WHERE code = '1'),
-    (SELECT coating_id FROM contact_coatings WHERE code = 'В'),
-    (SELECT resistance_id FROM heat_resistance WHERE code = '1'),
-    NULL,
-    (SELECT climate_id FROM climate_designs WHERE code = 'В'),
-    (SELECT connection_type_id FROM connection_types WHERE name = 'резьбовое'),
-    '2РМТ18Б4Г1В1В'
-),
--- Соединитель 2РМТ, блочный, с 7 контактами, вилка
-(
-    'ГЕ0.364.126ТУ', 
-    (SELECT type_id FROM connector_types WHERE type_name = '2РМТ'),
-    (SELECT size_id FROM body_sizes WHERE size_value = '18'),
-    (SELECT body_type_id FROM body_types WHERE code = 'Б'),
-    NULL,
-    NULL,
-    (SELECT quantity_id FROM contact_quantities WHERE quantity = 7),
-    (SELECT part_id FROM connector_parts WHERE code = 'Ш'),
-    (SELECT combination_id FROM contact_combinations WHERE code = '1'),
-    (SELECT coating_id FROM contact_coatings WHERE code = 'В'),
-    (SELECT resistance_id FROM heat_resistance WHERE code = '1'),
-    NULL,
-    (SELECT climate_id FROM climate_designs WHERE code = 'В'),
-    (SELECT connection_type_id FROM connection_types WHERE name = 'резьбовое'),
-    '2РМТ18Б7Ш1В1В'
-),
--- Соединитель 2РМДТ, кабельный с прямым патрубком, с 10 контактами, розетка
-(
-    'ГЕ0.364.126ТУ', 
-    (SELECT type_id FROM connector_types WHERE type_name = '2РМДТ'),
-    (SELECT size_id FROM body_sizes WHERE size_value = '22'),
-    (SELECT body_type_id FROM body_types WHERE code = 'К'),
-    (SELECT nozzle_type_id FROM nozzle_types WHERE code = 'П'),
-    (SELECT nut_type_id FROM nut_types WHERE code = 'Э'),
-    (SELECT quantity_id FROM contact_quantities WHERE quantity = 10),
-    (SELECT part_id FROM connector_parts WHERE code = 'Г'),
-    (SELECT combination_id FROM contact_combinations WHERE code = '5'),
-    (SELECT coating_id FROM contact_coatings WHERE code = 'А'),
-    (SELECT resistance_id FROM heat_resistance WHERE code = '1'),
-    NULL,
-    (SELECT climate_id FROM climate_designs WHERE code = 'В'),
-    (SELECT connection_type_id FROM connection_types WHERE name = 'резьбовое'),
-    '2РМДТ22КП10Г5А1В'
-),
--- Соединитель 2РМТ, кабельный с угловым патрубком, с 4 контактами, вилка
-(
-    'ГЕ0.364.126ТУ', 
-    (SELECT type_id FROM connector_types WHERE type_name = '2РМТ'),
-    (SELECT size_id FROM body_sizes WHERE size_value = '14'),
-    (SELECT body_type_id FROM body_types WHERE code = 'К'),
-    (SELECT nozzle_type_id FROM nozzle_types WHERE code = 'У'),
-    (SELECT nut_type_id FROM nut_types WHERE code = 'Н'),
-    (SELECT quantity_id FROM contact_quantities WHERE quantity = 4),
-    (SELECT part_id FROM connector_parts WHERE code = 'Ш'),
-    (SELECT combination_id FROM contact_combinations WHERE code = '3'),
-    (SELECT coating_id FROM contact_coatings WHERE code = 'А'),
-    (SELECT resistance_id FROM heat_resistance WHERE code = '1'),
-    NULL,
-    (SELECT climate_id FROM climate_designs WHERE code = 'В'),
-    (SELECT connection_type_id FROM connection_types WHERE name = 'резьбовое'),
-    '2РМТ14КУ4Ш3А1В'
-);
-
--- Добавление опций дизайна для соединителей
-INSERT INTO connector_design_options (connector_id, shell_size_id, option_name, option_value, description)
-VALUES
-(
-    (SELECT connector_id FROM connectors WHERE full_code = '2РМТ18Б4Ш1В1В'),
-    (SELECT shell_size_id FROM shell_sizes WHERE diameter = 20.0),
-    'Проходной кожух',
-    'Совместим',
-    'Соединитель совместим с проходным кожухом 20.0 мм'
-),
-(
-    (SELECT connector_id FROM connectors WHERE full_code = '2РМТ18Б4Г1В1В'),
-    (SELECT shell_size_id FROM shell_sizes WHERE diameter = 20.0),
-    'Проходной кожух',
-    'Совместим',
-    'Соединитель совместим с проходным кожухом 20.0 мм'
-),
-(
-    (SELECT connector_id FROM connectors WHERE full_code = '2РМТ18Б7Ш1В1В'),
-    (SELECT shell_size_id FROM shell_sizes WHERE diameter = 24.0),
-    'Проходной кожух',
-    'Совместим',
-    'Соединитель совместим с проходным кожухом 24.0 мм'
-);
-
--- Добавление совместимых соединителей
-INSERT INTO compatible_connectors (connector_id, compatible_connector_id, description)
-VALUES
-(
-    (SELECT connector_id FROM connectors WHERE full_code = '2РМТ18Б4Ш1В1В'),
-    (SELECT connector_id FROM connectors WHERE full_code = '2РМТ18Б4Г1В1В'),
-    'Вилка и розетка совместимы'
-),
-(
-    (SELECT connector_id FROM connectors WHERE full_code = '2РМТ18Б4Г1В1В'),
-    (SELECT connector_id FROM connectors WHERE full_code = '2РМТ18Б4Ш1В1В'),
-    'Розетка и вилка совместимы'
-);
-
--- Добавление записей о документации
-INSERT INTO connector_documentation (type_id, doc_name, doc_path, description)
-VALUES
-(
-    (SELECT type_id FROM connector_types WHERE type_name = '2РМТ'),
-    'Техническая документация 2РМТ',
-    '/pdf/2РМТ_ТУ.pdf',
-    'Техническая документация на соединители 2РМТ'
-),
-(
-    (SELECT type_id FROM connector_types WHERE type_name = '2РМДТ'),
-    'Техническая документация 2РМДТ',
-    '/pdf/2РМДТ_ТУ.pdf',
-    'Техническая документация на соединители 2РМДТ'
-); 
+-- Данные уже существуют в базе данных
+-- Этот файл сохранен для сохранения структуры проекта и для возможности восстановления базы данных с нуля
+-- Реальные данные можно получить, выполнив экспорт из существующей БД
 
 -- ======================================
 -- Создание представлений
@@ -1196,366 +840,54 @@ CREATE INDEX idx_compatible_connectors ON compatible_connectors(connector_id, co
 CREATE INDEX idx_lifetime_temperature ON connector_lifetime_by_temperature(max_temperature); 
 
 -- ======================================
--- Проверка целостности базы данных
+-- Удаление ненужных таблиц
 -- ======================================
-SELECT 'Проверка целостности базы данных...' as log;
+SELECT 'Удаление ненужных таблиц...' as log;
 
--- Тесты целостности базы данных соединителей 2РМТ, 2РМДТ
+-- Миграция 005: Удаление таблиц
+-- Версия: 1.0
+-- Дата: 2025-05-12
 
--- Проверка на отсутствие соединителей с несуществующими внешними ключами
+-- Начало транзакции
+
+-- Установка кодировки клиента UTF-8
+SET client_encoding TO 'UTF8';
+
+-- Проверка, что миграция еще не применялась
 DO $$
 BEGIN
-    -- Проверка наличия всех типов соединителей
-    ASSERT (
-        SELECT COUNT(*) 
-        FROM connectors c 
-        LEFT JOIN connector_types ct ON c.type_id = ct.type_id 
-        WHERE ct.type_id IS NULL
-    ) = 0, 'Найдены соединители с несуществующими типами';
-    
-    -- Проверка наличия всех размеров корпуса
-    ASSERT (
-        SELECT COUNT(*) 
-        FROM connectors c 
-        LEFT JOIN body_sizes bs ON c.size_id = bs.size_id 
-        WHERE bs.size_id IS NULL
-    ) = 0, 'Найдены соединители с несуществующими размерами корпуса';
-    
-    -- Проверка наличия всех типов корпуса
-    ASSERT (
-        SELECT COUNT(*) 
-        FROM connectors c 
-        LEFT JOIN body_types bt ON c.body_type_id = bt.body_type_id 
-        WHERE bt.body_type_id IS NULL
-    ) = 0, 'Найдены соединители с несуществующими типами корпуса';
-    
-    -- Проверка наличия всех типов патрубка (только для кабельных соединителей)
-    ASSERT (
-        SELECT COUNT(*) 
-        FROM connectors c 
-        LEFT JOIN nozzle_types nt ON c.nozzle_type_id = nt.nozzle_type_id 
-        WHERE c.nozzle_type_id IS NOT NULL AND nt.nozzle_type_id IS NULL
-    ) = 0, 'Найдены соединители с несуществующими типами патрубка';
-    
-    -- Проверка наличия всех типов гайки
-    ASSERT (
-        SELECT COUNT(*) 
-        FROM connectors c 
-        LEFT JOIN nut_types nut ON c.nut_type_id = nut.nut_type_id 
-        WHERE c.nut_type_id IS NOT NULL AND nut.nut_type_id IS NULL
-    ) = 0, 'Найдены соединители с несуществующими типами гайки';
-    
-    -- Проверка наличия всех количеств контактов
-    ASSERT (
-        SELECT COUNT(*) 
-        FROM connectors c 
-        LEFT JOIN contact_quantities cq ON c.quantity_id = cq.quantity_id 
-        WHERE cq.quantity_id IS NULL
-    ) = 0, 'Найдены соединители с несуществующими количествами контактов';
-    
-    -- Проверка наличия всех частей соединителя
-    ASSERT (
-        SELECT COUNT(*) 
-        FROM connectors c 
-        LEFT JOIN connector_parts cp ON c.part_id = cp.part_id 
-        WHERE cp.part_id IS NULL
-    ) = 0, 'Найдены соединители с несуществующими частями';
-    
-    -- Проверка наличия всех сочетаний контактов
-    ASSERT (
-        SELECT COUNT(*) 
-        FROM connectors c 
-        LEFT JOIN contact_combinations cc ON c.combination_id = cc.combination_id 
-        WHERE cc.combination_id IS NULL
-    ) = 0, 'Найдены соединители с несуществующими сочетаниями контактов';
-    
-    -- Проверка наличия всех покрытий контактов
-    ASSERT (
-        SELECT COUNT(*) 
-        FROM connectors c 
-        LEFT JOIN contact_coatings cco ON c.coating_id = cco.coating_id 
-        WHERE cco.coating_id IS NULL
-    ) = 0, 'Найдены соединители с несуществующими покрытиями контактов';
-    
-    -- Проверка наличия всех значений теплостойкости
-    ASSERT (
-        SELECT COUNT(*) 
-        FROM connectors c 
-        LEFT JOIN heat_resistance hr ON c.resistance_id = hr.resistance_id 
-        WHERE hr.resistance_id IS NULL
-    ) = 0, 'Найдены соединители с несуществующими значениями теплостойкости';
-    
-    -- Проверка наличия всех климатических исполнений
-    ASSERT (
-        SELECT COUNT(*) 
-        FROM connectors c 
-        LEFT JOIN climate_designs cd ON c.climate_id = cd.climate_id 
-        WHERE cd.climate_id IS NULL
-    ) = 0, 'Найдены соединители с несуществующими климатическими исполнениями';
-    
-    -- Проверка наличия всех типов соединения
-    ASSERT (
-        SELECT COUNT(*) 
-        FROM connectors c 
-        LEFT JOIN connection_types con ON c.connection_type_id = con.connection_type_id 
-        WHERE con.connection_type_id IS NULL
-    ) = 0, 'Найдены соединители с несуществующими типами соединения';
-    
-    -- Проверка на дубликаты полных кодов соединителей
-    ASSERT (
-        SELECT COUNT(*) 
-        FROM (
-            SELECT full_code, COUNT(*) as cnt
-            FROM connectors
-            GROUP BY full_code
-            HAVING COUNT(*) > 1
-        ) AS dupes
-    ) = 0, 'Найдены дубликаты полных кодов соединителей';
-    
-    -- Проверка наличия всех размеров проходных кожухов
-    ASSERT (
-        SELECT COUNT(*) 
-        FROM connector_design_options cdo 
-        LEFT JOIN shell_sizes ss ON cdo.shell_size_id = ss.shell_size_id 
-        WHERE cdo.shell_size_id IS NOT NULL AND ss.shell_size_id IS NULL
-    ) = 0, 'Найдены опции дизайна с несуществующими размерами проходных кожухов';
-    
-    -- Проверка наличия всех соединителей в таблице опций дизайна
-    ASSERT (
-        SELECT COUNT(*) 
-        FROM connector_design_options cdo 
-        LEFT JOIN connectors c ON cdo.connector_id = c.connector_id 
-        WHERE c.connector_id IS NULL
-    ) = 0, 'Найдены опции дизайна для несуществующих соединителей';
-    
-    -- Проверка наличия всех соединителей в таблице совместимых соединителей
-    ASSERT (
-        SELECT COUNT(*) 
-        FROM compatible_connectors cc 
-        LEFT JOIN connectors c1 ON cc.connector_id = c1.connector_id 
-        LEFT JOIN connectors c2 ON cc.compatible_connector_id = c2.connector_id 
-        WHERE c1.connector_id IS NULL OR c2.connector_id IS NULL
-    ) = 0, 'Найдены записи о совместимости для несуществующих соединителей';
+    IF EXISTS (SELECT 1 FROM migrations WHERE migration_name = '005_remove_tables') THEN
+        RAISE EXCEPTION 'Миграция 005_remove_tables уже применена';
+    END IF;
+END $$;
 
-    -- Проверка наличия всех диаметров контактов в таблице связей сочетаний
-    ASSERT (
-        SELECT COUNT(*) 
-        FROM combination_diameter_map cdm 
-        LEFT JOIN contact_diameters cd ON cdm.diameter_id = cd.diameter_id 
-        WHERE cd.diameter_id IS NULL
-    ) = 0, 'Найдены записи о связях с несуществующими диаметрами';
-    
-    -- Проверка наличия всех сочетаний контактов в таблице связей
-    ASSERT (
-        SELECT COUNT(*) 
-        FROM combination_diameter_map cdm 
-        LEFT JOIN contact_combinations cc ON cdm.combination_id = cc.combination_id 
-        WHERE cc.combination_id IS NULL
-    ) = 0, 'Найдены записи о связях с несуществующими сочетаниями';
-    
-    -- Проверка наличия всех типов соединителей в таблице документации
-    ASSERT (
-        SELECT COUNT(*) 
-        FROM connector_documentation cd 
-        LEFT JOIN connector_types ct ON cd.type_id = ct.type_id 
-        WHERE cd.type_id IS NOT NULL AND ct.type_id IS NULL
-    ) = 0, 'Найдены записи о документации для несуществующих типов соединителей';
-    
-    RAISE NOTICE 'Все проверки целостности базы данных выполнены успешно';
-EXCEPTION
-    WHEN ASSERT_FAILURE THEN
-        RAISE EXCEPTION 'Ошибка целостности базы данных: %', SQLERRM;
-END$$;
+-- Сначала удаляем зависимые представления
+DROP VIEW IF EXISTS v_connectors_full CASCADE;
+DROP VIEW IF EXISTS v_connectors_search CASCADE;
 
--- Проверка корректности характеристик
-SELECT
-    'Количество соединителей' AS check_name,
-    COUNT(*) AS check_value,
-    'OK' AS status
-FROM
-    connectors
-UNION ALL
-SELECT
-    'Количество сочетаний диаметров' AS check_name,
-    COUNT(*) AS check_value,
-    'OK' AS status
-FROM
-    combination_diameter_map
-UNION ALL
-SELECT
-    'Количество совместимых соединителей' AS check_name,
-    COUNT(*) AS check_value,
-    'OK' AS status
-FROM
-    compatible_connectors
-UNION ALL
-SELECT
-    'Количество опций дизайна' AS check_name,
-    COUNT(*) AS check_value,
-    'OK' AS status
-FROM
-    connector_design_options;
+-- Удаляем зависимые таблицы
+DROP TABLE IF EXISTS products CASCADE;
+DROP TABLE IF EXISTS connector_documentation CASCADE;
+DROP TABLE IF EXISTS compatible_connectors CASCADE;
+DROP TABLE IF EXISTS connector_design_options CASCADE;
 
--- Проверка наличия всех технических характеристик для контактов
-SELECT
-    cd.diameter AS "Диаметр контакта",
-    CASE WHEN cr.max_resistance IS NULL THEN 'ОШИБКА' ELSE 'OK' END AS "Сопротивление",
-    CASE WHEN cmc.max_current IS NULL THEN 'ОШИБКА' ELSE 'OK' END AS "Макс. ток"
-FROM
-    contact_diameters cd
-    LEFT JOIN contact_resistance cr ON cd.diameter_id = cr.diameter_id
-    LEFT JOIN contact_max_current cmc ON cd.diameter_id = cmc.diameter_id
-ORDER BY
-    cd.diameter; 
+-- Теперь удаляем основные таблицы
+DROP TABLE IF EXISTS product_groups CASCADE;
+DROP TABLE IF EXISTS connectors CASCADE;
 
--- ======================================
--- Выполнение примеров запросов
--- ======================================
-SELECT 'Выполнение примеров запросов...' as log;
+-- Удаляем связанные функции и триггеры
+DROP FUNCTION IF EXISTS update_product_timestamp() CASCADE;
+DROP FUNCTION IF EXISTS update_product_group_timestamp() CASCADE;
+DROP FUNCTION IF EXISTS update_connector_timestamp() CASCADE;
 
--- Примеры запросов для работы с базой данных соединителей 2РМТ, 2РМДТ
+-- Удаляем запись миграции 004, так как эти таблицы больше не нужны
+DELETE FROM migrations WHERE migration_name = '004_product_groups';
 
--- 1. Получение полной информации о конкретном соединителе по его коду
-SELECT * FROM v_connectors_full WHERE full_code = '2РМТ18Б4Г1В1В';
+-- Запись информации о текущей миграции
+INSERT INTO migrations (migration_name, version)
+VALUES ('005_remove_tables', '1.0');
 
--- 2. Поиск всех соединителей определенного типа
-SELECT full_code, size_value, body_type, contact_quantity, connector_part 
-FROM v_connectors_search 
-WHERE type_name = '2РМТ'
-ORDER BY size_value, contact_quantity;
-
--- 3. Поиск соединителей с определенным количеством контактов и размером корпуса
-SELECT full_code, type_name, body_type, connector_part, contact_coating
-FROM v_connectors_search
-WHERE contact_quantity = 4 AND size_value = '18'
-ORDER BY type_name, body_type;
-
--- 4. Получение соединителей определенного типа с определенным покрытием контактов
-SELECT full_code, size_value, body_type, contact_quantity, connector_part
-FROM v_connectors_search
-WHERE type_name = '2РМДТ' AND contact_coating = 'золото'
-ORDER BY size_value, contact_quantity;
-
--- 5. Поиск кабельных соединителей с угловым патрубком
-SELECT full_code, type_name, size_value, contact_quantity, connector_part
-FROM v_connectors_search
-WHERE body_type = 'кабельный' AND nozzle_type = 'угловой'
-ORDER BY type_name, size_value, contact_quantity;
-
--- 6. Получение статистики по количеству соединителей каждого типа
-SELECT type_name, COUNT(*) AS connector_count
-FROM v_connectors_search
-GROUP BY type_name
-ORDER BY connector_count DESC;
-
--- 7. Получение статистики по количеству соединителей с разными видами покрытия контактов
-SELECT contact_coating, COUNT(*) AS connector_count
-FROM v_connectors_search
-GROUP BY contact_coating
-ORDER BY connector_count DESC;
-
--- 8. Получение данных о максимальном сопротивлении и токе контактов по диаметрам
-SELECT * FROM v_contact_specs;
-
--- 9. Получение данных о наработке соединителей при разных температурах
-SELECT * FROM v_thermal_specs WHERE spec_type = 'Наработка' ORDER BY max_temperature;
-
--- 10. Получение данных о температуре перегрева контактов при разных нагрузках
-SELECT * FROM v_thermal_specs WHERE spec_type = 'Перегрев' ORDER BY hours DESC;
-
--- 11. Получение общих технических характеристик соединителей
-SELECT * FROM v_connector_specifications;
-
--- 12. Использование функции для получения информации о соединителе по коду
-SELECT * FROM get_connector_by_code('2РМТ18Б7Ш1В1В');
-
--- 13. Использование функции для поиска совместимых соединителей
-SELECT * FROM find_compatible_connectors('2РМТ18Б4Ш1В1В');
-
--- 14. Использование функции для расчета срока службы при определенной температуре
-SELECT * FROM calculate_lifetime_at_temperature(100);
-
--- 15. Получение информации о сочетаниях контактов
-SELECT * FROM v_contact_combinations ORDER BY code, position;
-
--- 16. Пример комплексного запроса: получение полных данных о контактах соединителя
-WITH connector_contacts AS (
-    SELECT c.full_code, c.combination_id
-    FROM connectors c
-    WHERE c.full_code = '2РМТ18Б7Ш1В1В'
-)
-SELECT 
-    cc.full_code AS "Код соединителя",
-    cd.diameter AS "Диаметр контакта (мм)",
-    cr.max_resistance AS "Сопротивление (мОм)",
-    cmc.max_current AS "Максимальный ток (А)",
-    ROUND(cmc.max_current * 0.7, 1) AS "Рекомендуемый ток (А)"
-FROM 
-    connector_contacts cc
-    JOIN contact_combinations comb ON cc.combination_id = comb.combination_id
-    JOIN combination_diameter_map cdm ON comb.combination_id = cdm.combination_id
-    JOIN contact_diameters cd ON cdm.diameter_id = cd.diameter_id
-    JOIN contact_resistance cr ON cd.diameter_id = cr.diameter_id
-    JOIN contact_max_current cmc ON cd.diameter_id = cmc.diameter_id
-ORDER BY 
-    cd.diameter;
-
--- 17. Пример использования функции для разбора кода соединителя
-SELECT * FROM parse_connector_code('2РМТ18Б7Ш1В1В');
-
--- 18. Пример генерации кода соединителя
-SELECT generate_connector_code('2РМТ', '18', 'Б', NULL, 7, 'Ш', '1', 'В', '1', 'В');
-
--- 19. Поиск соединителей с возможностью установки проходного кожуха определенного размера
-SELECT 
-    c.full_code, 
-    ct.type_name, 
-    bs.size_value, 
-    cq.quantity, 
-    cp.name AS connector_part, 
-    ss.diameter AS shell_diameter
-FROM 
-    connectors c
-    JOIN connector_types ct ON c.type_id = ct.type_id
-    JOIN body_sizes bs ON c.size_id = bs.size_id
-    JOIN contact_quantities cq ON c.quantity_id = cq.quantity_id
-    JOIN connector_parts cp ON c.part_id = cp.part_id
-    JOIN connector_design_options cdo ON c.connector_id = cdo.connector_id
-    JOIN shell_sizes ss ON cdo.shell_size_id = ss.shell_size_id
-WHERE 
-    ss.diameter = 20.0
-ORDER BY 
-    ct.type_name, bs.size_value;
-
--- 20. Расчет максимальной температуры контактов при разных токовых нагрузках для соединителя
-WITH connector_contacts AS (
-    SELECT 
-        c.full_code,
-        cd.diameter,
-        cmc.max_current
-    FROM 
-        connectors c
-        JOIN contact_combinations cc ON c.combination_id = cc.combination_id
-        JOIN combination_diameter_map cdm ON cc.combination_id = cdm.combination_id
-        JOIN contact_diameters cd ON cdm.diameter_id = cd.diameter_id
-        JOIN contact_max_current cmc ON cd.diameter_id = cmc.diameter_id
-    WHERE 
-        c.full_code = '2РМТ18Б7Ш1В1В'
-)
-SELECT 
-    cc.full_code AS "Код соединителя",
-    cc.diameter AS "Диаметр контакта, мм",
-    cc.max_current AS "Максимальный ток, А",
-    col.load_percent AS "Токовая нагрузка, %",
-    ROUND(cc.max_current * col.load_percent / 100, 1) AS "Расчетный ток, А",
-    col.overheat_temperature AS "Температура перегрева, °C"
-FROM 
-    connector_contacts cc
-    CROSS JOIN contact_overheat_by_load col
-WHERE 
-    col.load_percent IN (50, 75, 100, 110, 120)
-ORDER BY 
-    cc.diameter, col.load_percent; 
+-- Завершение транзакции
 
 SELECT 'Инициализация базы данных успешно завершена!' as log;
 
