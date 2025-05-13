@@ -5,12 +5,11 @@
 -- Начало транзакции
 BEGIN;
 
--- Создание схемы
-CREATE SCHEMA IF NOT EXISTS connector_schema;
-SET search_path TO connector_schema, public;
+-- Использование схемы public
+SET search_path TO public;
 
 -- Создание таблицы миграций для отслеживания выполненных миграций
-CREATE TABLE IF NOT EXISTS connector_schema.migrations (
+CREATE TABLE IF NOT EXISTS migrations (
     id SERIAL PRIMARY KEY,
     migration_name VARCHAR(255) NOT NULL,
     version VARCHAR(50) NOT NULL,
@@ -18,7 +17,7 @@ CREATE TABLE IF NOT EXISTS connector_schema.migrations (
 );
 
 -- Запись информации о текущей миграции
-INSERT INTO connector_schema.migrations (migration_name, version)
+INSERT INTO migrations (migration_name, version)
 VALUES ('001_initial_schema', '1.0');
 
 -- Включаем все основные файлы схемы

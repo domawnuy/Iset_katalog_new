@@ -23,7 +23,7 @@ def get_applied_migrations():
         check_table = """
         SELECT EXISTS (
             SELECT FROM pg_tables
-            WHERE schemaname = 'connector_schema'
+            WHERE schemaname = 'public'
             AND tablename = 'migrations'
         );
         """
@@ -35,7 +35,7 @@ def get_applied_migrations():
         # Получаем список примененных миграций
         query = """
         SELECT migration_name 
-        FROM connector_schema.migrations 
+        FROM migrations 
         ORDER BY id;
         """
         migrations = execute_query(query)

@@ -8,7 +8,7 @@ BEGIN;
 -- Проверка, что миграция еще не применялась
 DO $$
 BEGIN
-    IF EXISTS (SELECT 1 FROM connector_schema.migrations WHERE migration_name = '003_views_functions') THEN
+    IF EXISTS (SELECT 1 FROM migrations WHERE migration_name = '003_views_functions') THEN
         RAISE EXCEPTION 'Миграция 003_views_functions уже применена';
     END IF;
 END $$;
@@ -19,7 +19,7 @@ END $$;
 \i 'database/indexes/01_connector_indexes.sql'
 
 -- Запись информации о текущей миграции
-INSERT INTO connector_schema.migrations (migration_name, version)
+INSERT INTO migrations (migration_name, version)
 VALUES ('003_views_functions', '1.0');
 
 -- Завершение транзакции

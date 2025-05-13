@@ -8,7 +8,7 @@ BEGIN;
 -- Проверка, что миграция еще не применялась
 DO $$
 BEGIN
-    IF EXISTS (SELECT 1 FROM connector_schema.migrations WHERE migration_name = '002_initial_data') THEN
+    IF EXISTS (SELECT 1 FROM migrations WHERE migration_name = '002_initial_data') THEN
         RAISE EXCEPTION 'Миграция 002_initial_data уже применена';
     END IF;
 END $$;
@@ -20,7 +20,7 @@ END $$;
 \i 'database/data/04_connectors_data.sql'
 
 -- Запись информации о текущей миграции
-INSERT INTO connector_schema.migrations (migration_name, version)
+INSERT INTO migrations (migration_name, version)
 VALUES ('002_initial_data', '1.0');
 
 -- Завершение транзакции

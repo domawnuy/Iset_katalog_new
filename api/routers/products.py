@@ -40,8 +40,7 @@ async def get_products_by_group_id(
                 """
                 SELECT COUNT(*) AS total_count 
                 FROM connector_series cs
-                JOIN connector_types ct ON substring(cs.series_name, 1, position(' ' in cs.series_name || ' ')-1) = ct.code
-                WHERE ct.type_id = %s
+                WHERE cs.type_id = %s
                 """, 
                 (group_id,)
             )
@@ -55,14 +54,11 @@ async def get_products_by_group_id(
                 """
                 SELECT 
                     cs.series_id AS product_id,
-                    cs.series_name AS product_name,
-                    '' AS product_image_path  -- Путь к изображению пока не определен в базе
+                    cs.series_name AS product_name
                 FROM 
                     connector_series cs
-                JOIN 
-                    connector_types ct ON substring(cs.series_name, 1, position(' ' in cs.series_name || ' ')-1) = ct.code
                 WHERE 
-                    ct.type_id = %s
+                    cs.type_id = %s
                 ORDER BY 
                     cs.series_name
                 LIMIT %s OFFSET %s
