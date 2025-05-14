@@ -1,5 +1,6 @@
 #!/bin/bash
 echo "Запуск контейнеров Docker для Iset Katalog..."
+cd "$(dirname "$0")"
 docker-compose up -d
 echo ""
 echo "Контейнеры запущены:"

@@ -1,7 +1,6 @@
 #!/bin/bash
-# Переходим в корневую директорию проекта
-cd "$(dirname "$0")"
 echo "Остановка контейнеров Docker для Iset Katalog..."
+cd "$(dirname "$0")"
 docker-compose down
 echo ""
 echo "Контейнеры остановлены."

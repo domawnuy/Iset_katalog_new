@@ -6,11 +6,11 @@ VALUES
 ON CONFLICT (type_id) DO NOTHING;
 
 -- Заполнение таблицы размеров соединителей
-INSERT INTO connector_sizes (size_id, size_code, description) 
+INSERT INTO body_sizes (size_id, size_value, description) 
 VALUES 
-    (7, 14, 'Размер 14'),
-    (8, 18, 'Размер 18'),
-    (9, 22, 'Размер 22')
+    (7, '14', 'Размер 14'),
+    (8, '18', 'Размер 18'),
+    (9, '22', 'Размер 22')
 ON CONFLICT (size_id) DO NOTHING;
 
 -- Заполнение таблицы серий соединителей

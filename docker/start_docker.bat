@@ -1,5 +1,6 @@
 @echo off
 echo Запуск контейнеров Docker для Iset Katalog...
+cd %~dp0
 docker-compose up -d
 echo.
 echo Контейнеры запущены:

@@ -287,57 +287,58 @@ with get_db_cursor() as cursor:
 
 ## Запуск в Docker
 
-Проект поддерживает запуск в контейнерах Docker, что позволяет быстро развернуть как базу данных, так и API-сервер единой командой.
+Для запуска приложения в Docker выполните следующие шаги:
 
-### Требования
-- [Docker Desktop](https://www.docker.com/products/docker-desktop/) (для Windows/Mac) или Docker Engine (для Linux)
-- Docker Compose
+### Запуск
 
-### Запуск проекта
-Для запуска проекта в Docker выполните:
+1. **Windows**:
+   ```bash
+   docker\start_docker.bat
+   ```
 
-**Windows:**
-```bash
-cd docker
-start_docker.bat
-```
+2. **Linux/Mac**:
+   ```bash
+   chmod +x docker/start_docker.sh
+   ./docker/start_docker.sh
+   ```
 
-**Linux/Mac:**
-```bash
-cd docker
-chmod +x start_docker.sh
-./start_docker.sh
-```
+Это запустит два контейнера:
+- PostgreSQL база данных (порт 5432)
+- API сервер (порт 8000)
 
-После запуска:
-- API будет доступен по адресу: http://localhost:8000
-- Документация API (Swagger): http://localhost:8000/docs
-- PostgreSQL будет доступен на порту 5432
+### Проверка состояния
 
-### Остановка проекта
-Для остановки проекта выполните:
+Для проверки состояния Docker-контейнеров:
 
-**Windows:**
-```bash
-cd docker
-stop_docker.bat
-```
+1. **Windows**:
+   ```bash
+   docker\check_docker.bat
+   ```
 
-**Linux/Mac:**
-```bash
-cd docker
-chmod +x stop_docker.sh
-./stop_docker.sh
-```
+2. **Linux/Mac**:
+   ```bash
+   chmod +x docker/check_docker.sh
+   ./docker/check_docker.sh
+   ```
 
-### Структура Docker-инфраструктуры
-- **db** - контейнер с PostgreSQL
-- **api** - контейнер с FastAPI-приложением
+### Остановка
 
-Данные PostgreSQL сохраняются в именованном томе `iset-katalog-postgres-data` и не удаляются при остановке контейнеров.
+Для остановки контейнеров:
 
-Все файлы Docker-инфраструктуры расположены в папке `docker/`:
-- **docker/Dockerfile** - образ для API-сервера
-- **docker/docker-compose.yml** - конфигурация контейнеров
-- **docker/start_docker.bat** и **docker/start_docker.sh** - скрипты запуска
-- **docker/stop_docker.bat** и **docker/stop_docker.sh** - скрипты остановки 
+1. **Windows**:
+   ```bash
+   docker\stop_docker.bat
+   ```
+
+2. **Linux/Mac**:
+   ```bash
+   chmod +x docker/stop_docker.sh
+   ./docker/stop_docker.sh
+   ```
+
+## Особенности Docker-установки
+
+- База данных автоматически инициализируется скриптами из директории `database/schema`
+- Данные базы сохраняются в именованном Docker-томе `iset-katalog-postgres-data`
+- API сервер запускается после успешной инициализации базы данных
+- Документация API доступна по адресу `http://localhost:8000/docs` 
