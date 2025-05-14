@@ -1,0 +1,35 @@
+# Git
+.git
+.gitignore
+
+# Docker
+docker/
+.docker
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+.env
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+.pytest_cache/
+.coverage
+htmlcov/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Logs и временные файлы
+*.log
+*.tmp
+.DS_Store 

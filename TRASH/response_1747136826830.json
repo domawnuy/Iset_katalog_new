@@ -1,0 +1,436 @@
+{
+  "connector_id": 6,
+  "full_code": "2РМДТ",
+  "gost": "ГОСТ В 23476.8-86",
+  "connector_type": "2РМДТ",
+  "body_size": "стандартный",
+  "body_type": "стандартный",
+  "nozzle_type": null,
+  "nut_type": null,
+  "contacts_quantity": 0,
+  "connector_part": "розетка",
+  "contact_combination": "стандартное",
+  "contact_coating": "золото",
+  "heat_resistance": 100,
+  "special_design": null,
+  "climate_design": "УХЛ",
+  "connection_type": "резьбовое",
+  "description": "Соединители электрические цилиндрические низкочастотные 2РМДТ",
+  "purpose": "Предназначены для работы в электрических цепях постоянного и переменного (частотой до 3МГц) токов.",
+  "parts_info": "Соединители состоят из кабельной и приборной части.",
+  "design_features": "Конструктивные особенности определяются исполнениями: так и кабельными, как и приборными частями.",
+  "interchangeability": "Соединители 2РМДТ имеют различные схемы расположения контактов и взаимосочетания.",
+  "contacts_info": [
+    {
+      "diameter": 1,
+      "max_resistance": 5,
+      "max_current": 8
+    },
+    {
+      "diameter": 1.5,
+      "max_resistance": 2.5,
+      "max_current": 15
+    },
+    {
+      "diameter": 2,
+      "max_resistance": 1.6,
+      "max_current": 18
+    },
+    {
+      "diameter": 3,
+      "max_resistance": 0.8,
+      "max_current": 32
+    }
+  ],
+  "technical_specs": [
+    {
+      "param_name": "Сопротивление контактов",
+      "param_value": {
+        "диаметр контакта, 1,0 мм": "не более 5,0 мОм",
+        "диаметр контакта, 1,5 мм": "не более 2,5 мОм",
+        "диаметр контакта, 2,0 мм": "не более 1,6 мОм",
+        "диаметр контакта, 3,0 мм": "не более 0,8 мОм"
+      }
+    },
+    {
+      "param_name": "Сопротивление изоляции",
+      "param_value": "не менее 5 000 МОм"
+    },
+    {
+      "param_name": "Максимальный ток на одиночный контакт",
+      "param_value": {
+        "диаметр контакта, 1,0 мм": "8,0 А",
+        "диаметр контакта, 1,5 мм": "15,0 А",
+        "диаметр контакта, 2,0 мм": "18,0 А",
+        "диаметр контакта, 3,0 мм": "32,0 А"
+      }
+    },
+    {
+      "param_name": "Максимальное рабочее напряжение",
+      "param_value": "560 В"
+    },
+    {
+      "param_name": "Количество сочленений - расчленений",
+      "param_value": "500"
+    },
+    {
+      "param_name": "Минимальный срок сохраняемости соединителей",
+      "param_value": "15 лет"
+    }
+  ],
+  "lifetime_table": [
+    {
+      "lifetime_hours": 1000,
+      "max_temperature": 150
+    },
+    {
+      "lifetime_hours": 3000,
+      "max_temperature": 125
+    },
+    {
+      "lifetime_hours": 5000,
+      "max_temperature": 120
+    },
+    {
+      "lifetime_hours": 7500,
+      "max_temperature": 113
+    },
+    {
+      "lifetime_hours": 10000,
+      "max_temperature": 105
+    },
+    {
+      "lifetime_hours": 15000,
+      "max_temperature": 100
+    },
+    {
+      "lifetime_hours": 20000,
+      "max_temperature": 96
+    },
+    {
+      "lifetime_hours": 25000,
+      "max_temperature": 94
+    },
+    {
+      "lifetime_hours": 30000,
+      "max_temperature": 92
+    },
+    {
+      "lifetime_hours": 40000,
+      "max_temperature": 88
+    },
+    {
+      "lifetime_hours": 50000,
+      "max_temperature": 84
+    },
+    {
+      "lifetime_hours": 80000,
+      "max_temperature": 79
+    },
+    {
+      "lifetime_hours": 100000,
+      "max_temperature": 75
+    }
+  ],
+  "overheat_table": [
+    {
+      "load_percent": 220,
+      "overheat_temperature": 150
+    },
+    {
+      "load_percent": 180,
+      "overheat_temperature": 130
+    },
+    {
+      "load_percent": 150,
+      "overheat_temperature": 120
+    },
+    {
+      "load_percent": 120,
+      "overheat_temperature": 80
+    },
+    {
+      "load_percent": 110,
+      "overheat_temperature": 65
+    },
+    {
+      "load_percent": 100,
+      "overheat_temperature": 50
+    },
+    {
+      "load_percent": 85,
+      "overheat_temperature": 40
+    },
+    {
+      "load_percent": 75,
+      "overheat_temperature": 30
+    },
+    {
+      "load_percent": 50,
+      "overheat_temperature": 25
+    },
+    {
+      "load_percent": 25,
+      "overheat_temperature": 20
+    }
+  ],
+  "mechanical_factors": [
+    {
+      "name": "Синусоидальная вибрация",
+      "parameters": {
+        "диапазон частот": "1 – 5 000 Гц",
+        "амплитуда ускорения": "490 м/с² (50 g)"
+      }
+    },
+    {
+      "name": "Механический удар одиночного действия",
+      "parameters": {
+        "пиковое ударное ускорение": "5 000 м/с² (500 g)"
+      }
+    },
+    {
+      "name": "Механический удар многократного действия",
+      "parameters": {
+        "пиковое ударное ускорение": "1 000 м/с² (100 g)"
+      }
+    }
+  ],
+  "climatic_factors": [
+    {
+      "name": "Повышенная рабочая температура среды",
+      "value": "100 °C"
+    },
+    {
+      "name": "Пониженная предельная температура среды",
+      "value": "минус 60 °C"
+    },
+    {
+      "name": "Атмосферное пониженное рабочее давление",
+      "value": "1,33х10⁻⁴ Па (1х10⁻⁶ мм рт. ст.)"
+    },
+    {
+      "name": "Повышенная относительная влажность воздуха при температуре +40 °C (без конденсации влаги)",
+      "value": "98 %"
+    }
+  ],
+  "contact_layout": [
+    {
+      "size_code": 14,
+      "connector_type": "2РМТ",
+      "contact_diameter": 1,
+      "contacts_quantity": 4,
+      "combination_code": "1",
+      "max_current_summary": 27,
+      "max_current_contact": 8,
+      "max_working_voltage": 560
+    },
+    {
+      "size_code": 18,
+      "connector_type": "2РМДТ",
+      "contact_diameter": 1.5,
+      "contacts_quantity": 4,
+      "combination_code": "5",
+      "max_current_summary": 50,
+      "max_current_contact": 15,
+      "max_working_voltage": 560
+    },
+    {
+      "size_code": 18,
+      "connector_type": "2РМТ",
+      "contact_diameter": 1,
+      "contacts_quantity": 7,
+      "combination_code": "1",
+      "max_current_summary": 40,
+      "max_current_contact": 7,
+      "max_working_voltage": 560
+    },
+    {
+      "size_code": 22,
+      "connector_type": "2РМТ",
+      "contact_diameter": 2,
+      "contacts_quantity": 2,
+      "combination_code": "3",
+      "max_current_summary": 80,
+      "max_current_contact": 18,
+      "max_working_voltage": 560
+    },
+    {
+      "size_code": 22,
+      "connector_type": "2РМТ",
+      "contact_diameter": 1,
+      "contacts_quantity": 10,
+      "combination_code": "1",
+      "max_current_summary": 58,
+      "max_current_contact": 7,
+      "max_working_voltage": 560
+    }
+  ],
+  "dimension_tables": [
+    {
+      "title": "Приборная часть без патрубка",
+      "headers": [
+        "D*",
+        "L max",
+        "D гайки",
+        "D1",
+        "A",
+        "B"
+      ],
+      "rows": [
+        {
+          "D*": "14",
+          "L max": "25",
+          "D гайки": "M14x1",
+          "D1": "M16x1",
+          "A": "17±0.1",
+          "B": "24"
+        },
+        {
+          "D*": "18",
+          "L max": "25",
+          "D гайки": "M18x1",
+          "D1": "M20x1",
+          "A": "20±0.1",
+          "B": "27"
+        },
+        {
+          "D*": "22",
+          "L max": "27",
+          "D гайки": "M22x1",
+          "D1": "M24x1",
+          "A": "23±0.1",
+          "B": "30"
+        }
+      ]
+    },
+    {
+      "title": "Кабельная часть без патрубка",
+      "headers": [
+        "D гайки",
+        "D1",
+        "L max"
+      ],
+      "rows": [
+        {
+          "D гайки": "M14x1",
+          "D1": "22",
+          "L max": "25"
+        },
+        {
+          "D гайки": "M18x1",
+          "D1": "25",
+          "L max": "25"
+        },
+        {
+          "D гайки": "M22x1",
+          "D1": "29",
+          "L max": "27"
+        }
+      ]
+    },
+    {
+      "title": "Патрубок прямой с экранированной гайкой (ПЭ)",
+      "headers": [
+        "D гайки",
+        "d1",
+        "L max"
+      ],
+      "rows": [
+        {
+          "D гайки": "M14x1",
+          "d1": "6,5",
+          "L max": "28,7"
+        },
+        {
+          "D гайки": "M18x1",
+          "d1": "10,5",
+          "L max": "28,7"
+        },
+        {
+          "D гайки": "M22x1",
+          "d1": "14",
+          "L max": "28,7"
+        }
+      ]
+    }
+  ],
+  "order_info": {
+    "connector_type": "2РМТ, 2РМДТ",
+    "size_codes": [
+      "14",
+      "18",
+      "22"
+    ],
+    "body_types": {
+      "Б": "блочный (приборный)",
+      "К": "кабельный"
+    },
+    "nozzle_types": {
+      "П": "прямой",
+      "У": "угловой"
+    },
+    "nut_types": {
+      "Э": "для экранированного кабеля",
+      "Н": "для неэкранированного кабеля"
+    },
+    "contacts_quantity": [
+      "4",
+      "7",
+      "10"
+    ],
+    "connector_parts": {
+      "Г": "розетка",
+      "Ш": "вилка"
+    },
+    "contact_combinations": {
+      "1": "все контакты Ø 1,0 мм",
+      "2": "все контакты Ø 1,5 мм",
+      "3": "все контакты Ø 2,0 мм или Ø 3,0 мм",
+      "5": "все контакты Ø 1,5 мм"
+    },
+    "contact_coatings": {
+      "А": "золото",
+      "В": "серебро"
+    },
+    "heat_resistance": {
+      "1": "100° C"
+    },
+    "special_designs": {
+      "Д": "левая розетка (только для проходных вилок)",
+      "В": "корпус блочный (приборный) без левой резьбы"
+    },
+    "climate_designs": "Всеклиматическое исполнение",
+    "example_connector": [
+      "Вилка 2РМТ18БП1В1В  ГЕО.364.126ТУ.",
+      "Розетка 2РМТ18КП3Г1В1В  ГЕО.364.126ТУ"
+    ]
+  },
+  "documentation": [
+    {
+      "doc_name": "Техническая спецификация",
+      "doc_path": "/api/Documents/GetDocumentById/1?product_id=6",
+      "description": "Спецификация для 2РМДТ",
+      "upload_date": "2024-01-01"
+    },
+    {
+      "doc_name": "ГОСТ В 23476.8-86",
+      "doc_path": "/api/Documents/GetDocumentById/2",
+      "description": "Соединители электрические низкочастотные",
+      "upload_date": "2024-01-01"
+    },
+    {
+      "doc_name": "Каталог соединителей",
+      "doc_path": "/api/Documents/GetDocumentById/3",
+      "description": "Полный каталог соединителей 2РМТ, 2РМДТ",
+      "upload_date": "2024-01-01"
+    }
+  ],
+  "images": [
+    "/api/Images/GetProductImage/6",
+    "/api/Images/GetProductImage/6?view=front",
+    "/api/Images/GetProductImage/6?view=side",
+    "/api/Images/GetTechnicalDrawing/6"
+  ],
+  "created_at": "2024-01-01",
+  "updated_at": "2024-01-01"
+}

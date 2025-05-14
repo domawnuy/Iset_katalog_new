@@ -128,4 +128,22 @@ CREATE TABLE connection_types (
     name VARCHAR(50) NOT NULL,
     description TEXT
 );
-COMMENT ON TABLE connection_types IS 'Типы соединения (резьбовое, байонетное)'; 
+COMMENT ON TABLE connection_types IS 'Типы соединения (резьбовое, байонетное)';
+
+-- Таблица серий соединителей
+CREATE TABLE connector_series (
+    series_id SERIAL PRIMARY KEY,
+    series_name VARCHAR(50) NOT NULL,
+    description TEXT,
+    type_id INTEGER NOT NULL REFERENCES connector_types(type_id)
+);
+COMMENT ON TABLE connector_series IS 'Серии соединителей';
+
+-- Таблица связи серий с размерами
+CREATE TABLE series_sizes (
+    id SERIAL PRIMARY KEY,
+    series_id INTEGER NOT NULL REFERENCES connector_series(series_id),
+    size_id INTEGER NOT NULL REFERENCES body_sizes(size_id),
+    UNIQUE(series_id, size_id)
+);
+COMMENT ON TABLE series_sizes IS 'Связь серий соединителей с размерами корпуса'; 

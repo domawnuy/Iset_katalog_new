@@ -66,4 +66,19 @@ CREATE TABLE shell_sizes (
 COMMENT ON TABLE shell_sizes IS 'Размеры проходных кожухов';
 COMMENT ON COLUMN shell_sizes.shell_size_id IS 'Уникальный идентификатор размера';
 COMMENT ON COLUMN shell_sizes.diameter IS 'Диаметр проходного кожуха в мм';
-COMMENT ON COLUMN shell_sizes.description IS 'Описание размера'; 
+COMMENT ON COLUMN shell_sizes.description IS 'Описание размера';
+
+-- Таблица электромеханических параметров
+CREATE TABLE electromechanical_parameters (
+    param_id SERIAL PRIMARY KEY,
+    series_name VARCHAR(50) NOT NULL,
+    size_code INTEGER NOT NULL,
+    contact_diameter NUMERIC(3,1) NOT NULL,
+    contact_quantity INTEGER NOT NULL,
+    contact_combination_code INTEGER NOT NULL,
+    max_current NUMERIC(5,1) NOT NULL,
+    max_voltage INTEGER NOT NULL,
+    max_working_voltage INTEGER NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+COMMENT ON TABLE electromechanical_parameters IS 'Электромеханические параметры соединителей'; 

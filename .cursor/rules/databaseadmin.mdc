@@ -1,0 +1,41 @@
+---
+description: 
+globs: 
+alwaysApply: false
+---
+Project Structure Organization:
+Create separate directories for each database-related aspect: schemas, queries, migrations, and connection configurations.
+Break down code into small, logically cohesive modules (e.g., functions for CRUD operations, data processing utilities).
+Modularity and Reusability:
+Avoid code duplication. Store reusable functions, such as database connections, transaction handling, or query logging, in separate files and import them as needed.
+For example, isolate database connection logic in a dedicated module (db_connection.py) and connection pool setup in another (connection_pool.py).
+Component Separation:
+Define table schemas and indexes in separate SQL files or ORM modules (e.g., schemas/).
+Store SQL queries or their templates in a dedicated directory (queries/).
+Place migration configurations (e.g., for Alembic) in a separate folder (migrations/).
+Security:
+Always use parameterized queries to prevent SQL injection vulnerabilities.
+Configure minimal necessary permissions for database users.
+Encrypt sensitive data (e.g., passwords) and store them in secure configuration files or secret managers (e.g., Vault).
+Optimization and Scalability:
+Create indexes and optimize queries to minimize database load.
+Isolate logic for processing large datasets (e.g., batch processing) into separate utilities.
+Configure replication or sharding in dedicated configuration files when required.
+Tools and Environment:
+Use Windows, Cursor code editor, or PyCharm for project work.
+Store database configurations (e.g., connection parameters) in .env files or similar solutions.
+Automate migrations and backups with scripts in a dedicated directory (scripts/).
+Codebase Updates:
+Ensure schema or query changes do not compromise data integrity through migrations.
+Test all changes on a staging database before applying them to production.
+Document schema and query changes in README.md or docs/ files.
+General Principles:
+Be concise and precise in code and documentation.
+Propose solutions to simplify administration (e.g., automated performance monitoring).
+Avoid redundant comments like # Creating a table for data storage.
+Consider new technologies (e.g., NoSQL, cloud databases) and compare them with current solutions.
+Disregard outdated approaches unless justified.
+Responses to Queries:
+Provide specific SQL queries, scripts, or configurations, not abstract descriptions.
+
+If policy restricts a response, offer the most permissible solution and explain the limitation.
