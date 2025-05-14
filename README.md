@@ -287,58 +287,145 @@ with get_db_cursor() as cursor:
 
 ## Запуск в Docker
 
-Для запуска приложения в Docker выполните следующие шаги:
+### Требования
 
-### Запуск
+Для запуска проекта в Docker необходимо установить:
+- [Docker](https://www.docker.com/products/docker-desktop/) (для Windows/Mac) или Docker Engine (для Linux)
+- Docker Compose (входит в состав Docker Desktop)
 
-1. **Windows**:
-   ```bash
-   docker\start_docker.bat
-   ```
+### Инструкция по развертыванию
 
-2. **Linux/Mac**:
-   ```bash
-   chmod +x docker/start_docker.sh
-   ./docker/start_docker.sh
-   ```
+#### 1. Клонирование репозитория
 
-Это запустит два контейнера:
-- PostgreSQL база данных (порт 5432)
-- API сервер (порт 8000)
+```bash
+git clone https://github.com/domawnuy/Iset_katalog_new.git
+cd Iset_katalog_new
+```
 
-### Проверка состояния
+#### 2. Запуск Docker-контейнеров
 
-Для проверки состояния Docker-контейнеров:
+##### Windows:
+```bash
+docker\start_docker.bat
+```
 
-1. **Windows**:
-   ```bash
-   docker\check_docker.bat
-   ```
+##### Linux/Mac:
+```bash
+chmod +x docker/start_docker.sh
+./docker/start_docker.sh
+```
 
-2. **Linux/Mac**:
-   ```bash
-   chmod +x docker/check_docker.sh
-   ./docker/check_docker.sh
-   ```
+Скрипт запуска выполнит следующие операции:
+- Сборка Docker-образа для API на основе Dockerfile
+- Запуск контейнера PostgreSQL
+- Автоматическая инициализация базы данных скриптами из директории `database/schema`
+- Запуск API-сервера после успешной инициализации базы данных
 
-### Остановка
+#### 3. Проверка работоспособности
 
-Для остановки контейнеров:
+После успешного запуска:
+- API доступен по адресу: http://localhost:8000
+- Документация API (Swagger UI): http://localhost:8000/docs
+- База данных PostgreSQL доступна на порту 5432
 
-1. **Windows**:
-   ```bash
-   docker\stop_docker.bat
-   ```
+Для проверки состояния контейнеров можно использовать специальные скрипты:
 
-2. **Linux/Mac**:
-   ```bash
-   chmod +x docker/stop_docker.sh
-   ./docker/stop_docker.sh
-   ```
+##### Windows:
+```bash
+docker\check_docker.bat
+```
 
-## Особенности Docker-установки
+##### Linux/Mac:
+```bash
+chmod +x docker/check_docker.sh
+./docker/check_docker.sh
+```
 
-- База данных автоматически инициализируется скриптами из директории `database/schema`
-- Данные базы сохраняются в именованном Docker-томе `iset-katalog-postgres-data`
-- API сервер запускается после успешной инициализации базы данных
-- Документация API доступна по адресу `http://localhost:8000/docs` 
+Скрипты проверки выполнят:
+- Вывод статуса запущенных контейнеров
+- Проверку доступности API
+- Проверку подключения к базе данных
+- Вывод последних строк логов API-сервера
+
+#### 4. Остановка контейнеров
+
+Для остановки Docker-контейнеров:
+
+##### Windows:
+```bash
+docker\stop_docker.bat
+```
+
+##### Linux/Mac:
+```bash
+chmod +x docker/stop_docker.sh
+./docker/stop_docker.sh
+```
+
+При остановке контейнеров данные базы данных сохраняются в именованном Docker-томе и не будут потеряны.
+
+### Структура Docker-инфраструктуры
+
+- **docker/docker-compose.yml** - основной файл конфигурации, описывающий сервисы:
+  - **db** - контейнер с PostgreSQL
+  - **api** - контейнер с FastAPI-приложением
+
+- **docker/Dockerfile** - описание сборки образа для API-сервера
+- **docker/.dockerignore** - список файлов, исключаемых при сборке образа
+
+### Доступ к базе данных из контейнера
+
+Для подключения к базе данных из контейнера используются следующие параметры:
+- **Хост**: db
+- **Порт**: 5432
+- **Имя БД**: connector_catalog
+- **Пользователь**: postgres
+- **Пароль**: aboba1337
+
+### Доступ к базе данных извне контейнера
+
+Для подключения к базе данных с хост-машины:
+- **Хост**: localhost
+- **Порт**: 5432
+- **Имя БД**: connector_catalog
+- **Пользователь**: postgres
+- **Пароль**: aboba1337
+
+Пример подключения с использованием psql:
+```bash
+psql -h localhost -p 5432 -U postgres -d connector_catalog
+```
+
+### Возможные проблемы и их решение
+
+#### 1. Порт 5432 или 8000 уже занят
+
+Если порты 5432 (PostgreSQL) или 8000 (API) уже заняты другими приложениями, измените порты в файле `docker/docker-compose.yml`:
+
+```yaml
+services:
+  db:
+    ports:
+      - "5433:5432"  # Изменено с 5432:5432
+  api:
+    ports:
+      - "8080:8000"  # Изменено с 8000:8000
+```
+
+#### 2. Ошибка подключения к базе данных из API
+
+Если API не может подключиться к базе данных, убедитесь, что:
+- Контейнер PostgreSQL запущен и работает
+- В файле `docker-compose.yml` правильно указаны переменные окружения для API (DB_HOST=db)
+
+Для проверки статуса базы данных:
+```bash
+docker exec iset-katalog-db pg_isready -U postgres -d connector_catalog
+```
+
+#### 3. Ошибки инициализации базы данных
+
+Если скрипты инициализации базы данных завершаются с ошибками, проверьте логи контейнера PostgreSQL:
+```bash
+docker logs iset-katalog-db
+``` 
