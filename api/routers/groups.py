@@ -17,7 +17,7 @@ router = APIRouter(
 @router.get("/GetGroups", response_model=List[Group])
 async def get_groups():
     """
-    Получение списка групп изделий
+    Получение списка групп изделий (Электрические низкочастотные цилиндрические соединители)
     """
     try:
         with get_db_cursor() as cursor:

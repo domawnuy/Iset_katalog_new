@@ -148,11 +148,7 @@ class ProductDetail(BaseModel):
     connection_type: str = Field(..., description="Тип соединения (резьбовое, байонетное)")
     
     # Детальная информация
-    description: str = Field("", description="Описание соединителя")
-    purpose: str = Field("", description="Назначение соединителя")
-    parts_info: str = Field("", description="Информация о составе соединителя")
-    design_features: str = Field("", description="Конструктивные особенности")
-    interchangeability: str = Field("", description="Взаимозаменяемость")
+    description: str = Field("", description="Подробное описание соединителя, включая назначение, информацию о составе, конструктивные особенности и взаимозаменяемость")
     
     # Технические параметры
     contacts_info: List[ContactInfo] = Field([], description="Информация о контактах")
